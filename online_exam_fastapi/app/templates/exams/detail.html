@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  /* Scoped tweaks for the exam detail page – does not override global Bootstrap styles */
+  .exam-hero-card {
+    border-radius: 1rem;
+  }
+  .exam-meta-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .exam-badge-pill {
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-weight: 500;
+  }
+</style>
+
+{# ---- Hero / Summary ---- #}
+<div class="container py-4">
+  <div class="card border-0 shadow-sm mb-4 exam-hero-card">
+    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <div class="exam-meta-label text-muted mb-1">Exam</div>
+        <h2 class="h4 mb-1">{{ exam.title }}</h2>
+        <p class="text-muted mb-0">{{ exam.subject }}</p>
+      </div>
+
+      <div class="d-flex flex-column align-items-end gap-2">
+        {% if course %}
+        <span class="badge bg-light text-primary border exam-badge-pill">
+          {{ course.code }} · {{ course.name }}
+        </span>
+        {% endif %}
+
+        {% set status_lower = exam.status|lower %}
+        <span class="badge exam-badge-pill
+          {% if status_lower == 'draft' %} bg-secondary-subtle text-secondary
+          {% elif status_lower == 'scheduled' %} bg-info-subtle text-info
+          {% elif status_lower == 'completed' %} bg-success-subtle text-success
+          {% else %} bg-light text-muted border{% endif %}">
+          {{ exam.status|capitalize }}
+        </span>
+
+        <a class="btn btn-primary btn-sm" href="/exams/{{ exam.id }}/edit">
+          <i class="bi bi-pencil-square me-1"></i> Edit Exam
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---- Info cards ---- #}
+<div class="container pb-4">
+  <div class="row g-4">
+    <!-- Schedule & Duration -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="card-title mb-0">Schedule &amp; Duration</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0 small">
+            <dt class="col-4 fw-semibold">Duration</dt>
+            <dd class="col-8">{{ exam.duration_minutes }} minutes</dd>
+
+            <dt class="col-4 fw-semibold">Start Time</dt>
+            <dd class="col-8">
+              {% if exam.start_time %}
+                {{ exam.start_time.strftime("%d %b %Y, %H:%M") }}
+              {% else %}
+                <span class="text-muted">Not scheduled</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-4 fw-semibold">End Time</dt>
+            <dd class="col-8">
+              {% if exam.end_time %}
+                {{ exam.end_time.strftime("%d %b %Y, %H:%M") }}
+              {% else %}
+                <span class="text-muted">Not scheduled</span>
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="card-title mb-0">Metadata</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0 small">
+            <dt class="col-4 fw-semibold">Created</dt>
+            <dd class="col-8">{{ exam.created_at.strftime("%d %b %Y, %H:%M") }}</dd>
+
+            <dt class="col-4 fw-semibold">Last Updated</dt>
+            <dd class="col-8">{{ exam.updated_at.strftime("%d %b %Y, %H:%M") }}</dd>
+
+            <dt class="col-4 fw-semibold">Status</dt>
+            <dd class="col-8 text-capitalize">{{ exam.status }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---- Instructions ---- #}
+<div class="container pb-5">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pb-0">
+      <h5 class="card-title mb-0">Instructions</h5>
+    </div>
+    <div class="card-body">
+      {% if exam.instructions %}
+        <p class="mb-0">{{ exam.instructions }}</p>
+      {% else %}
+        <p class="text-muted mb-0 small">
+          No specific instructions added yet. You can add them when editing this exam.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

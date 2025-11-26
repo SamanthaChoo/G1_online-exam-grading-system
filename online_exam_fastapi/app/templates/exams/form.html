@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                {% if mode == "edit" %}
+                <h2 class="h5 mb-0">Edit Exam</h2>
+                {% else %}
+                <h2 class="h5 mb-0">Create New Exam</h2>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if errors %}
+                <div class="alert alert-danger d-flex align-items-start">
+                    <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">There were problems with this exam.</h6>
+                        <ul class="mb-0 small">
+                            {% for field, message in errors.items() %}
+                            <li>{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+                <form method="post" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" name="title"
+                               class="form-control {% if errors.title %}is-invalid{% endif %}"
+                               value="{% if form %}{{ form.title }}{% elif exam %}{{ exam.title }}{% endif %}">
+                        {% if errors.title %}
+                        <div class="invalid-feedback">
+                            {{ errors.title }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        <input type="text" name="subject"
+                               class="form-control {% if errors.subject %}is-invalid{% endif %}"
+                               value="{% if form %}{{ form.subject }}{% elif exam %}{{ exam.subject }}{% endif %}">
+                        {% if errors.subject %}
+                        <div class="invalid-feedback">
+                            {{ errors.subject }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Duration (minutes)</label>
+                        <input type="number" name="duration_minutes"
+                               class="form-control {% if errors.duration_minutes %}is-invalid{% endif %}"
+                               id="duration_minutes" min="1" step="5"
+                               value="{% if form %}{{ form.duration_minutes }}{% elif exam %}{{ exam.duration_minutes }}{% endif %}">
+                        {% if errors.duration_minutes %}
+                        <div class="invalid-feedback">
+                            {{ errors.duration_minutes }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Course</label>
+                        <select class="form-select {% if errors.course_id %}is-invalid{% endif %}" name="course_id">
+                            <option value="">-- Select Course --</option>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}"
+                                {% if (form and form.course_id and course.id == form.course_id|int)
+                                      or (not form and selected_course_id and course.id == selected_course_id)
+                                      or (not form and exam and course.id == exam.course_id) %}
+                                    selected
+                                {% endif %}>
+                                {{ course.code }} &middot; {{ course.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if errors.course_id %}
+                        <div class="invalid-feedback d-block">
+                            {{ errors.course_id }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Instructions <span class="text-muted small">(optional)</span></label>
+                        <textarea name="instructions" class="form-control" rows="3"
+                                  placeholder="Any guidelines or instructions for students">{{ form.instructions if form else (exam.instructions if exam and exam.instructions else '') }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select {% if errors.status %}is-invalid{% endif %}">
+                            {% for s in status_options %}
+                            <option value="{{ s }}"
+                              {% if form and form.status == s %}
+                                selected
+                              {% elif not form and exam and exam.status == s %}
+                                selected
+                              {% elif not form and not exam and s == 'draft' %}
+                                selected
+                              {% endif %}>
+                              {{ s|capitalize }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if errors.status %}
+                        <div class="invalid-feedback d-block">
+                            {{ errors.status }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Start Time</label>
+                            <input type="datetime-local" name="start_time"
+                                   class="form-control {% if errors.start_time %}is-invalid{% endif %}"
+                                   id="start_time"
+                                   value="{% if form and form.start_time %}{{ form.start_time }}{% elif exam and exam.start_time %}{{ exam.start_time.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                            {% if errors.start_time %}
+                            <div class="invalid-feedback">
+                                {{ errors.start_time }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">End Time</label>
+                            <input type="datetime-local" name="end_time"
+                                   class="form-control {% if errors.end_time %}is-invalid{% endif %}"
+                                   id="end_time" readonly
+                                   value="{% if form and form.end_time %}{{ form.end_time }}{% elif exam and exam.end_time %}{{ exam.end_time.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                            {% if errors.end_time %}
+                            <div class="invalid-feedback">
+                                {{ errors.end_time }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="/courses/" class="btn btn-outline-secondary">Back to Courses</a>
+                        {% if mode == "edit" %}
+                        <button type="submit" class="btn btn-primary">Update Exam</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-primary">Create Exam</button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+  (function () {
+    const startEl = document.getElementById("start_time");
+    const durationEl = document.getElementById("duration_minutes");
+    const endEl = document.getElementById("end_time");
+
+    if (!startEl || !durationEl || !endEl) return;
+
+    function pad(num) {
+      return num.toString().padStart(2, "0");
+    }
+
+    function toLocalDateTimeValue(date) {
+      const year = date.getFullYear();
+      const month = pad(date.getMonth() + 1);
+      const day = pad(date.getDate());
+      const hours = pad(date.getHours());
+      const minutes = pad(date.getMinutes());
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function autoFillEnd() {
+      if (!startEl.value) return;
+      const duration = parseInt(durationEl.value, 10);
+      if (isNaN(duration) || duration <= 0) return;
+
+      const startDate = new Date(startEl.value);
+      if (isNaN(startDate.getTime())) return;
+
+      const endDate = new Date(startDate.getTime() + duration * 60000);
+      endEl.value = toLocalDateTimeValue(endDate);
+    }
+
+    startEl.addEventListener("change", autoFillEnd);
+    durationEl.addEventListener("change", autoFillEnd);
+  })();
+</script>
+{% endblock %}
+

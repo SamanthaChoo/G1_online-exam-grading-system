@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+  /* Page-scoped polish for enrollment UI */
+  .enroll-search-input .form-control {
+    border-radius: 999px 0 0 999px;
+  }
+  .enroll-search-input .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-right: 0;
+  }
+  .enroll-search-input .form-control {
+    border-left: 0;
+  }
+  .enroll-search-input .btn {
+    border-radius: 0 999px 999px 0;
+  }
+  .enroll-toggle .form-check-input {
+    width: 2.5rem;
+    height: 1.4rem;
+    cursor: pointer;
+  }
+  .enroll-toggle .form-check-input:focus {
+    box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+  }
+</style>
+
+<!-- Header section -->
+<div class="container py-4">
+  <a href="/courses/" class="text-decoration-none">&larr; Back to Courses</a>
+  <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+    <div>
+      <h2 class="mb-1">{{ course.name }}</h2>
+      <p class="text-muted mb-0">{{ course.code }} &middot; Manage enrolled students</p>
+    </div>
+    <span class="badge bg-primary-subtle text-primary">
+      {{ enrolled_count }} enrolled
+    </span>
+  </div>
+</div>
+
+<!-- Controls bar -->
+<div class="bg-body-secondary border-top border-bottom py-3">
+  <div class="container d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <span class="fw-semibold">Students</span>
+      <span class="text-muted small">Search by name, email, or matric number</span>
+    </div>
+    <form class="enroll-search-input flex-grow-1" method="get">
+      <div class="input-group">
+        <span class="input-group-text bg-white">
+          <i class="bi bi-search"></i>
+        </span>
+        <input name="q" value="{{ q }}" class="form-control" placeholder="Search students...">
+        <button class="btn btn-primary" type="submit">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Main card with two-column layout -->
+<div class="container my-4">
+  <form method="post">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        {% if enrolled_students or available_students %}
+        <div class="row g-4">
+
+          <!-- Enrolled students -->
+          <div class="col-lg-6 border-end">
+            <h5 class="mb-3">Enrolled Students</h5>
+            {% if enrolled_students %}
+            <ul class="list-group list-group-flush">
+              {% for student in enrolled_students %}
+              <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">{{ student.name }}</div>
+                  <div class="text-muted small">
+                    {{ student.email }} &middot; {{ student.matric_no }}
+                  </div>
+                </div>
+                <div class="form-check form-switch enroll-toggle m-0">
+                  <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}"
+                         id="student-{{ student.id }}" checked>
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted small mb-0">
+              No students enrolled yet. Use the list on the right to add students.
+            </p>
+            {% endif %}
+          </div>
+
+          <!-- Available students -->
+          <div class="col-lg-6">
+            <h5 class="mb-3">Available Students</h5>
+            {% if available_students %}
+            <ul class="list-group list-group-flush">
+              {% for student in available_students %}
+              <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">{{ student.name }}</div>
+                  <div class="text-muted small">
+                    {{ student.email }} &middot; {{ student.matric_no }}
+                  </div>
+                </div>
+                <div class="form-check form-switch enroll-toggle m-0">
+                  <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}"
+                         id="student-{{ student.id }}">
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted small mb-0">
+              No other students found matching this search.
+            </p>
+            {% endif %}
+          </div>
+
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">
+          No students found. Seed data will be added on startup, or you can create students in Sprint 2.
+        </p>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-white d-flex justify-content-end">
+        <button class="btn btn-primary px-4" type="submit">Save Enrollment</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+
