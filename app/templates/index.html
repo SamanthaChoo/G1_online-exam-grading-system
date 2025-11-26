@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Online Exam System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold mb-3">Online Examination & Grading System</h1>
+                <p class="lead text-muted">Sprint 1 - Essay Questions, Manual Grading, Auto-Submit</p>
+            </div>
+
+            <div class="row g-4">
+                <!-- For Lecturers -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-primary text-white p-3 me-3">
+                                    <i class="bi bi-pencil-square fs-4"></i>
+                                </div>
+                                <h3 class="card-title mb-0">For Lecturers</h3>
+                            </div>
+                            <p class="card-text text-muted mb-4">
+                                Create essay questions and grade student submissions.
+                            </p>
+                            <div class="d-grid gap-2">
+                                <a href="/essays/1/add" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-2"></i>Add Essay Question
+                                </a>
+                                <a href="/grading/1/submissions" class="btn btn-outline-primary">
+                                    <i class="bi bi-clipboard-check me-2"></i>Grade Submissions
+                                </a>
+                                <a href="/essays/1/view" class="btn btn-outline-secondary">
+                                    <i class="bi bi-list-ul me-2"></i>View All Questions
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- For Students -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-success text-white p-3 me-3">
+                                    <i class="bi bi-file-text fs-4"></i>
+                                </div>
+                                <h3 class="card-title mb-0">For Students</h3>
+                            </div>
+                            <p class="card-text text-muted mb-4">
+                                Take exams with timed essay questions (one attempt only).
+                            </p>
+                            <div class="d-grid gap-2">
+                                <a href="/exam/1/start?student_id=1" class="btn btn-success">
+                                    <i class="bi bi-play-circle me-2"></i>Start Exam (Student 1)
+                                </a>
+                                <a href="/exam/1/start?student_id=2" class="btn btn-success">
+                                    <i class="bi bi-play-circle me-2"></i>Start Exam (Student 2)
+                                </a>
+                                <a href="/exam/1/start?student_id=3" class="btn btn-success">
+                                    <i class="bi bi-play-circle me-2"></i>Start Exam (Student 3)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Start -->
+            <div class="alert alert-info mt-5" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Quick Start</h5>
+                <p class="mb-2">To test the system:</p>
+                <ol class="mb-0">
+                    <li>Add essay questions to Exam 1</li>
+                    <li>Have a student start the exam (student_id=1, 2, or 3)</li>
+                    <li>Submit answers before time runs out (or let it auto-submit)</li>
+                    <li>Grade the submissions as a lecturer</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

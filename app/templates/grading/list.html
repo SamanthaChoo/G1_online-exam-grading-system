@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Student Submissions - {{ exam.title }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 100px; min-height: 80vh;">
+  <div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+      <div class="col-lg-12">
+        <h2>
+          <i class="bi bi-clipboard-check text-primary"></i>
+          Student Submissions
+        </h2>
+        <p class="text-muted">{{ exam.title }} - Manual Grading</p>
+      </div>
+    </div>
+
+    <!-- Submissions List -->
+    {% if submissions %}
+    <div class="row g-4">
+      {% for item in submissions %}
+      <div class="col-lg-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <!-- Student Info -->
+              <div class="col-md-4">
+                <h5 class="mb-1">
+                  <i class="bi bi-person-circle me-2"></i>
+                  {{ item.student.name }}
+                </h5>
+                <small class="text-muted">ID: {{ item.student.id }}</small>
+              </div>
+              
+              <!-- Submission Status -->
+              <div class="col-md-3">
+                <p class="mb-1">
+                  <strong>Submitted:</strong><br>
+                  {{ item.attempt.ended_at.strftime('%Y-%m-%d %H:%M') }}
+                </p>
+                {% if item.attempt.auto_submitted %}
+                <span class="badge bg-warning">Auto-Submitted</span>
+                {% else %}
+                <span class="badge bg-success">Manual Submit</span>
+                {% endif %}
+              </div>
+              
+              <!-- Grading Progress -->
+              <div class="col-md-3">
+                <p class="mb-1">
+                  <strong>Grading Progress:</strong><br>
+                  {{ item.graded_count }} / {{ item.total_questions }} questions
+                </p>
+                {% if item.is_fully_graded %}
+                <span class="badge bg-success">
+                  <i class="bi bi-check-circle me-1"></i>Fully Graded
+                </span>
+                {% else %}
+                <span class="badge bg-warning">
+                  <i class="bi bi-hourglass-half me-1"></i>Pending
+                </span>
+                {% endif %}
+                <p class="mb-0 mt-2">
+                  <strong>Score:</strong> {{ item.total_marks }} / {{ item.max_marks }}
+                </p>
+              </div>
+              
+              <!-- Action -->
+              <div class="col-md-2 text-end">
+                <a href="/grading/{{ exam.id }}/{{ item.student.id }}" class="btn btn-primary">
+                  <i class="bi bi-pencil-square me-1"></i>Grade
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Summary -->
+    <div class="row mt-4">
+      <div class="col-lg-12">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Total Submissions:</strong> {{ submissions|length }} | 
+          <strong>Fully Graded:</strong> {{ submissions|selectattr('is_fully_graded')|list|length }}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center" role="alert">
+      <i class="bi bi-inbox me-2"></i>
+      <strong>No submissions yet.</strong> Students haven't submitted this exam.
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="text-center mt-4">
+      <a href="/" class="btn btn-outline-secondary">
+        <i class="bi bi-house me-2"></i>Back to Home
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}
