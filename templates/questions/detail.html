@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Question Detail</title>
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <!-- Favicons -->
+  <link href="/assets/img/favicon.png" rel="icon">
+  <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/assets/vendor/aos/aos.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="/assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+
+  <header id="header" class="header d-flex align-items-center sticky-top">
+    <div class="header-container container-fluid container-xl position-relative d-flex align-items-center justify-content-end">
+      <a href="/" class="logo d-flex align-items-center me-auto">
+        <h1 class="sitename">Exam System</h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/questions/?exam_id={{ exam.id }}">Questions</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="py-5">
+      <div class="container">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2>Question Detail</h2>
+            <p class="text-muted mb-0">Exam: {{ exam.title }}</p>
+          </div>
+          <div>
+            <a href="/questions/{{ question.id }}/edit" class="btn btn-outline-primary me-2">
+              <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a href="/questions/?exam_id={{ exam.id }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+          </div>
+        </div>
+
+        <!-- Question Details -->
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-body p-4">
+                <!-- Question Text -->
+                <div class="mb-4">
+                  <h5 class="text-primary mb-3">Question</h5>
+                  <p class="fs-5">{{ question.question_text }}</p>
+                </div>
+
+                <!-- Options -->
+                <div class="mb-4">
+                  <h5 class="text-primary mb-3">Options</h5>
+                  <div class="list-group">
+                    <div class="list-group-item {% if question.correct_option == 'A' %}list-group-item-success{% endif %}">
+                      <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div>
+                          <strong>A.</strong> {{ question.option_a }}
+                        </div>
+                        {% if question.correct_option == 'A' %}
+                        <span class="badge bg-success">Correct Answer</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="list-group-item {% if question.correct_option == 'B' %}list-group-item-success{% endif %}">
+                      <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div>
+                          <strong>B.</strong> {{ question.option_b }}
+                        </div>
+                        {% if question.correct_option == 'B' %}
+                        <span class="badge bg-success">Correct Answer</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="list-group-item {% if question.correct_option == 'C' %}list-group-item-success{% endif %}">
+                      <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div>
+                          <strong>C.</strong> {{ question.option_c }}
+                        </div>
+                        {% if question.correct_option == 'C' %}
+                        <span class="badge bg-success">Correct Answer</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="list-group-item {% if question.correct_option == 'D' %}list-group-item-success{% endif %}">
+                      <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div>
+                          <strong>D.</strong> {{ question.option_d }}
+                        </div>
+                        {% if question.correct_option == 'D' %}
+                        <span class="badge bg-success">Correct Answer</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Explanation -->
+                {% if question.explanation %}
+                <div class="mb-4">
+                  <h5 class="text-primary mb-3">Explanation</h5>
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> {{ question.explanation }}
+                  </div>
+                </div>
+                {% endif %}
+
+                <!-- Metadata -->
+                <div class="border-top pt-3">
+                  <p class="text-muted mb-0"><small>Created: {{ question.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Exam System</strong> <span>All Rights Reserved</span></p>
+    </div>
+  </footer>
+
+  <!-- Scroll Top -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/vendor/aos/aos.js"></script>
+
+  <!-- Main JS File -->
+  <script src="/assets/js/main.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Start Exam - {{ exam.title }}</title>
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <!-- Favicons -->
+  <link href="/assets/img/favicon.png" rel="icon">
+  <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/assets/vendor/aos/aos.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="/assets/css/main.css" rel="stylesheet">
+
+  <style>
+    .countdown-timer {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #0d6efd;
+      text-align: center;
+      margin: 30px 0;
+    }
+    .exam-info-card {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 30px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header id="header" class="header d-flex align-items-center sticky-top">
+    <div class="header-container container-fluid container-xl position-relative d-flex align-items-center justify-content-end">
+      <a href="/" class="logo d-flex align-items-center me-auto">
+        <h1 class="sitename">Exam System</h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="py-5">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <!-- Exam Information -->
+            <div class="text-center mb-4">
+              <h2>{{ exam.title }}</h2>
+              {% if exam.description %}
+              <p class="text-muted">{{ exam.description }}</p>
+              {% endif %}
+            </div>
+
+            <div class="exam-info-card">
+              <!-- Exam Details -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <p><strong><i class="bi bi-calendar-event"></i> Start Time:</strong></p>
+                  <p>{{ exam.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong><i class="bi bi-clock"></i> Duration:</strong></p>
+                  <p>{{ exam.duration_minutes }} minutes</p>
+                </div>
+              </div>
+
+              <!-- Countdown Timer -->
+              {% if not exam_started %}
+              <div class="text-center mb-4">
+                <p class="text-muted">Exam starts in:</p>
+                <div class="countdown-timer" id="countdown">
+                  <span id="hours">00</span>:<span id="minutes">00</span>:<span id="seconds">00</span>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Join Button -->
+              <div class="text-center">
+                {% if not can_join %}
+                <button class="btn btn-lg btn-secondary" disabled>
+                  <i class="bi bi-lock"></i> Available 30 minutes before start
+                </button>
+                <p class="text-muted mt-2"><small>The Join Exam button will be enabled 30 minutes before the exam starts.</small></p>
+                {% elif not exam_started %}
+                <button class="btn btn-lg btn-warning" id="joinBtn" disabled>
+                  <i class="bi bi-hourglass-split"></i> Join Exam (Available at start time)
+                </button>
+                <p class="text-muted mt-2"><small>Button will be enabled when the exam starts.</small></p>
+                {% else %}
+                <a href="/exam/paper/{{ exam.id }}?student_id=1" class="btn btn-lg btn-success" id="joinBtn">
+                  <i class="bi bi-play-circle"></i> Start Exam
+                </a>
+                <p class="text-muted mt-2"><small>Click to begin your examination.</small></p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="alert alert-info mt-4">
+              <h5><i class="bi bi-info-circle"></i> Instructions:</h5>
+              <ul>
+                <li>You can join the exam 30 minutes before the scheduled start time</li>
+                <li>The exam will automatically start at the scheduled time</li>
+                <li>Your answers will be auto-saved every 60 seconds</li>
+                <li>The exam will auto-submit when time expires</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Exam System</strong> <span>All Rights Reserved</span></p>
+    </div>
+  </footer>
+
+  <!-- Vendor JS Files -->
+  <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Countdown Timer Script -->
+  <script>
+    // Time until start in seconds (from backend)
+    let timeUntilStart = {{ time_until_start | tojson }};
+    
+    function updateCountdown() {
+      if (timeUntilStart <= 0) {
+        // Exam has started - reload page to show Start button
+        window.location.reload();
+        return;
+      }
+
+      const hours = Math.floor(timeUntilStart / 3600);
+      const minutes = Math.floor((timeUntilStart % 3600) / 60);
+      const seconds = timeUntilStart % 60;
+
+      document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+      document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+      document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
+
+      timeUntilStart--;
+
+      // Enable join button when countdown reaches 0
+      if (timeUntilStart <= 0) {
+        const joinBtn = document.getElementById('joinBtn');
+        if (joinBtn) {
+          joinBtn.disabled = false;
+          joinBtn.classList.remove('btn-warning');
+          joinBtn.classList.add('btn-success');
+          joinBtn.innerHTML = '<i class="bi bi-play-circle"></i> Start Exam';
+          joinBtn.onclick = function() {
+            window.location.href = '/exam/paper/{{ exam.id }}?student_id=1';
+          };
+        }
+      }
+    }
+
+    // Update countdown every second
+    {% if not exam_started %}
+    setInterval(updateCountdown, 1000);
+    updateCountdown(); // Initial call
+    {% endif %}
+  </script>
+
+</body>
+
+</html>

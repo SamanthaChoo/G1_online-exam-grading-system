@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>{{ action }} MCQ Question</title>
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <!-- Favicons -->
+  <link href="/assets/img/favicon.png" rel="icon">
+  <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/assets/vendor/aos/aos.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="/assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+
+  <header id="header" class="header d-flex align-items-center sticky-top">
+    <div class="header-container container-fluid container-xl position-relative d-flex align-items-center justify-content-end">
+      <a href="/" class="logo d-flex align-items-center me-auto">
+        <h1 class="sitename">Exam System</h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/questions/?exam_id={{ exam.id }}">Questions</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="py-5">
+      <div class="container">
+        <!-- Page Header -->
+        <div class="mb-4">
+          <h2>{{ action }} MCQ Question</h2>
+          <p class="text-muted mb-0">Exam: {{ exam.title }}</p>
+        </div>
+
+        <!-- Form -->
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-body p-4">
+                <form method="POST" action="{% if question %}/questions/{{ question.id }}/edit{% else %}/questions/new?exam_id={{ exam.id }}{% endif %}">
+                  <input type="hidden" name="exam_id" value="{{ exam.id }}">
+
+                  <!-- Question Text -->
+                  <div class="mb-3">
+                    <label for="question_text" class="form-label">Question Text *</label>
+                    <textarea class="form-control" id="question_text" name="question_text" rows="3" required>{% if question %}{{ question.question_text }}{% endif %}</textarea>
+                  </div>
+
+                  <!-- Options -->
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="option_a" class="form-label">Option A *</label>
+                      <input type="text" class="form-control" id="option_a" name="option_a" value="{% if question %}{{ question.option_a }}{% endif %}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="option_b" class="form-label">Option B *</label>
+                      <input type="text" class="form-control" id="option_b" name="option_b" value="{% if question %}{{ question.option_b }}{% endif %}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="option_c" class="form-label">Option C *</label>
+                      <input type="text" class="form-control" id="option_c" name="option_c" value="{% if question %}{{ question.option_c }}{% endif %}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="option_d" class="form-label">Option D *</label>
+                      <input type="text" class="form-control" id="option_d" name="option_d" value="{% if question %}{{ question.option_d }}{% endif %}" required>
+                    </div>
+                  </div>
+
+                  <!-- Correct Option -->
+                  <div class="mb-3">
+                    <label class="form-label">Correct Option *</label>
+                    <div>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="correct_option" id="correct_a" value="A" {% if question and question.correct_option == 'A' %}checked{% elif not question %}checked{% endif %} required>
+                        <label class="form-check-label" for="correct_a">A</label>
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="correct_option" id="correct_b" value="B" {% if question and question.correct_option == 'B' %}checked{% endif %} required>
+                        <label class="form-check-label" for="correct_b">B</label>
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="correct_option" id="correct_c" value="C" {% if question and question.correct_option == 'C' %}checked{% endif %} required>
+                        <label class="form-check-label" for="correct_c">C</label>
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="correct_option" id="correct_d" value="D" {% if question and question.correct_option == 'D' %}checked{% endif %} required>
+                        <label class="form-check-label" for="correct_d">D</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Explanation (Optional) -->
+                  <div class="mb-4">
+                    <label for="explanation" class="form-label">Explanation (Optional)</label>
+                    <textarea class="form-control" id="explanation" name="explanation" rows="2" placeholder="Provide an explanation for the correct answer">{% if question and question.explanation %}{{ question.explanation }}{% endif %}</textarea>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="d-flex justify-content-between">
+                    <a href="/questions/?exam_id={{ exam.id }}" class="btn btn-secondary">
+                      <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-check-circle"></i> {{ action }} Question
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Exam System</strong> <span>All Rights Reserved</span></p>
+    </div>
+  </footer>
+
+  <!-- Scroll Top -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/vendor/aos/aos.js"></script>
+
+  <!-- Main JS File -->
+  <script src="/assets/js/main.js"></script>
+
+</body>
+
+</html>

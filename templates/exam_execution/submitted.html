@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Exam Submitted - {{ exam.title }}</title>
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <!-- Favicons -->
+  <link href="/assets/img/favicon.png" rel="icon">
+  <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/assets/vendor/aos/aos.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="/assets/css/main.css" rel="stylesheet">
+
+  <style>
+    .success-icon {
+      font-size: 5rem;
+      color: #28a745;
+      margin: 20px 0;
+    }
+    .score-display {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #0d6efd;
+      margin: 20px 0;
+    }
+    .result-card {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 40px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+
+<body>
+
+  <header id="header" class="header d-flex align-items-center sticky-top">
+    <div class="header-container container-fluid container-xl position-relative d-flex align-items-center justify-content-end">
+      <a href="/" class="logo d-flex align-items-center me-auto">
+        <h1 class="sitename">Exam System</h1>
+      </a>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="py-5">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="result-card text-center">
+              <!-- Success Icon -->
+              <div class="success-icon">
+                <i class="bi bi-check-circle-fill"></i>
+              </div>
+
+              <!-- Title -->
+              <h2 class="mb-3">Exam Submitted Successfully!</h2>
+              <p class="text-muted mb-4">{{ exam.title }}</p>
+
+              <!-- Score Display -->
+              <div class="score-display">
+                {{ "%.2f"|format(result.score) }}%
+              </div>
+
+              <!-- Results Breakdown -->
+              <div class="row mt-4 mb-4">
+                <div class="col-md-4">
+                  <div class="p-3 border rounded">
+                    <h5 class="text-primary">{{ result.total_questions }}</h5>
+                    <p class="text-muted mb-0">Total Questions</p>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="p-3 border rounded">
+                    <h5 class="text-success">{{ result.correct_answers }}</h5>
+                    <p class="text-muted mb-0">Correct Answers</p>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="p-3 border rounded">
+                    <h5 class="text-danger">{{ result.total_questions - result.correct_answers }}</h5>
+                    <p class="text-muted mb-0">Incorrect Answers</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Performance Message -->
+              <div class="alert {% if result.score >= 80 %}alert-success{% elif result.score >= 60 %}alert-info{% elif result.score >= 40 %}alert-warning{% else %}alert-danger{% endif %} mt-4">
+                {% if result.score >= 80 %}
+                <i class="bi bi-trophy-fill"></i> <strong>Excellent!</strong> You performed exceptionally well.
+                {% elif result.score >= 60 %}
+                <i class="bi bi-hand-thumbs-up-fill"></i> <strong>Good Job!</strong> You passed the exam.
+                {% elif result.score >= 40 %}
+                <i class="bi bi-exclamation-triangle-fill"></i> <strong>Fair Performance</strong> - Consider reviewing the material.
+                {% else %}
+                <i class="bi bi-x-circle-fill"></i> <strong>Need Improvement</strong> - Please review the topics covered.
+                {% endif %}
+              </div>
+
+              <!-- Submission Details -->
+              <div class="text-muted mt-4">
+                <p><small><i class="bi bi-calendar-check"></i> Submitted at: {{ result.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></p>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="mt-4">
+                <a href="/" class="btn btn-primary">
+                  <i class="bi bi-house"></i> Back to Home
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Exam System</strong> <span>All Rights Reserved</span></p>
+    </div>
+  </footer>
+
+  <!-- Scroll Top -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/vendor/aos/aos.js"></script>
+
+  <!-- Main JS File -->
+  <script src="/assets/js/main.js"></script>
+
+  <!-- Confetti Effect for High Scores -->
+  {% if result.score >= 80 %}
+  <script>
+    // Simple confetti effect can be added here if desired
+    console.log('Congratulations on your excellent score!');
+  </script>
+  {% endif %}
+
+</body>
+
+</html>
