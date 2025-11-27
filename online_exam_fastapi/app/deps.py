@@ -2,12 +2,10 @@
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
-from sqlmodel import Session, select
-
 from app.database import get_session
 from app.models import User
+from fastapi import Depends, HTTPException, Request
+from sqlmodel import Session
 
 
 def get_current_user(
@@ -24,7 +22,7 @@ def get_current_user(
         request.session.clear()
         return None
     # Check status field if it exists
-    if hasattr(user, 'status') and user.status == "suspended":
+    if hasattr(user, "status") and user.status == "suspended":
         request.session.clear()
         return None
     return user
@@ -34,9 +32,7 @@ def require_login(current_user: User = Depends(get_current_user)) -> User:
     """Ensure that a user is logged in; otherwise redirect to login."""
     if current_user is None:
         # Use 303 redirect to the login page
-        raise HTTPException(
-            status_code=303, headers={"Location": "/auth/login"}
-        )
+        raise HTTPException(status_code=303, headers={"Location": "/auth/login"})
     return current_user
 
 
@@ -49,5 +45,3 @@ def require_role(required_roles: list[str]):
         return current_user
 
     return wrapper
-
-

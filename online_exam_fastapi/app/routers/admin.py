@@ -2,15 +2,14 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
-
 from app.auth_utils import hash_password
 from app.database import get_session
 from app.deps import require_role
 from app.models import User
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlmodel import Session, select
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -45,7 +44,9 @@ def list_users(
         "users": users_sorted,
         "sort": sort,
         "direction": "desc" if is_desc else "asc",
-        "has_sort": (sort not in (None, "", "created") or (direction or "desc").lower() != "desc"),
+        "has_sort": (
+            sort not in (None, "", "created") or (direction or "desc").lower() != "desc"
+        ),
         "current_user": current_user,
     }
     return templates.TemplateResponse("admin/user_list.html", context)
@@ -67,10 +68,10 @@ def edit_user_form(
         "email": user.email,
         "role": user.role,
         "is_active": user.is_active,
-        "title": getattr(user, 'title', None) or "",
-        "staff_id": getattr(user, 'staff_id', None) or "",
-        "phone": getattr(user, 'phone', None) or "",
-        "status": getattr(user, 'status', 'active') or "active",
+        "title": getattr(user, "title", None) or "",
+        "staff_id": getattr(user, "staff_id", None) or "",
+        "phone": getattr(user, "phone", None) or "",
+        "status": getattr(user, "status", "active") or "active",
     }
     context = {
         "request": request,
@@ -117,12 +118,22 @@ def edit_user(
         errors["role"] = "Role must be admin, lecturer, or student."
 
     # Validate title if provided
-    if title_clean and title_clean not in ["", "Dr.", "Prof.", "Assoc. Prof.", "Mr.", "Ms.", "Mrs.", "Ir.", "Ts."]:
+    if title_clean and title_clean not in [
+        "",
+        "Dr.",
+        "Prof.",
+        "Assoc. Prof.",
+        "Mr.",
+        "Ms.",
+        "Mrs.",
+        "Ir.",
+        "Ts.",
+    ]:
         errors["title"] = "Please select a valid title."
 
     # Validate phone if provided
     if phone_clean:
-        phone_digits = ''.join(filter(str.isdigit, phone_clean))
+        phone_digits = "".join(filter(str.isdigit, phone_clean))
         if len(phone_digits) < 7 or len(phone_digits) > 15:
             errors["phone"] = "Please enter a valid phone number (7-15 digits)."
 
@@ -167,16 +178,18 @@ def edit_user(
     user.email = email_clean
     user.role = role_clean
     user.is_active = bool(is_active)
-    
+
     # Update lecturer-specific fields
-    if hasattr(user, 'title'):
+    if hasattr(user, "title"):
         user.title = title_clean
-    if hasattr(user, 'staff_id'):
+    if hasattr(user, "staff_id"):
         user.staff_id = staff_id_clean if role_clean == "lecturer" else None
-    if hasattr(user, 'phone'):
+    if hasattr(user, "phone"):
         user.phone = phone_clean
-    if hasattr(user, 'status'):
-        user.status = status_field if status_field in ["active", "suspended"] else "active"
+    if hasattr(user, "status"):
+        user.status = (
+            status_field if status_field in ["active", "suspended"] else "active"
+        )
 
     session.add(user)
     session.commit()
@@ -220,7 +233,16 @@ def create_lecturer(
     phone_clean = phone.strip() if phone else None
 
     # Validation
-    if title_clean and title_clean not in ["Dr.", "Prof.", "Assoc. Prof.", "Mr.", "Ms.", "Mrs.", "Ir.", "Ts."]:
+    if title_clean and title_clean not in [
+        "Dr.",
+        "Prof.",
+        "Assoc. Prof.",
+        "Mr.",
+        "Ms.",
+        "Mrs.",
+        "Ir.",
+        "Ts.",
+    ]:
         errors["title"] = "Please select a valid title."
 
     if not name_clean:
@@ -239,7 +261,7 @@ def create_lecturer(
         errors["email"] = "Please enter a valid email address."
 
     if phone_clean:
-        phone_digits = ''.join(filter(str.isdigit, phone_clean))
+        phone_digits = "".join(filter(str.isdigit, phone_clean))
         if len(phone_digits) < 7 or len(phone_digits) > 15:
             errors["phone"] = "Please enter a valid phone number (7-15 digits)."
 
@@ -255,7 +277,9 @@ def create_lecturer(
 
     # Check for duplicate staff_id
     if staff_id_clean:
-        existing_staff = session.exec(select(User).where(User.staff_id == staff_id_clean)).first()
+        existing_staff = session.exec(
+            select(User).where(User.staff_id == staff_id_clean)
+        ).first()
         if existing_staff:
             errors["staff_id"] = "This Staff ID is already in use."
 
@@ -303,11 +327,11 @@ def reactivate_admin(
     admin = session.exec(select(User).where(User.email == "admin@example.com")).first()
     if admin:
         admin.is_active = True
-        if hasattr(admin, 'status'):
+        if hasattr(admin, "status"):
             admin.status = "active"
         session.add(admin)
         session.commit()
-        return {"message": "Admin account reactivated successfully. You can now log in."}
+        return {
+            "message": "Admin account reactivated successfully. You can now log in."
+        }
     return {"message": "Admin account not found."}
-
-

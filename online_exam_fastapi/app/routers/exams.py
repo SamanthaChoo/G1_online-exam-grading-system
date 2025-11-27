@@ -3,14 +3,14 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status as http_status
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
-
 from app.database import get_session
 from app.deps import get_current_user, require_role
 from app.models import Course, Exam, User
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import status as http_status
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlmodel import Session, select
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -382,4 +382,3 @@ def update_exam(
     return RedirectResponse(
         url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
     )
-

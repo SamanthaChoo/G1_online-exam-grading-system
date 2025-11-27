@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <h2>Essay Exams</h2>
+  <p class="text-muted">List of exams with essay functionality</p>
+  <ul>
+    {% for exam in exams %}
+      <li>
+        <strong>{{ exam.title }}</strong>
+        - <a href="/essay/{{ exam.id }}/questions">Questions</a>
+        - <a href="/essay/{{ exam.id }}/start">Start Attempt</a>
+        - <a href="/essay/{{ exam.id }}/attempts">Attempts</a>
+      </li>
+    {% else %}
+      <li>No exams found</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

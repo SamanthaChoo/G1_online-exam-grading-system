@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <h2>Attempt #{{ attempt.id }} for {{ exam.title }}</h2>
+  <div class="mb-3">
+    <strong>Time left:</strong> <span id="countdown">--:--</span>
+  </div>
+  <form id="attempt-form" method="post" action="/exam/{{ exam.id }}/submit?student_id={{ attempt.student_id }}">
+    {% for q in questions %}
+      <div class="mb-3">
+        <label class="form-label">Q{{ loop.index }}: {{ q.question_text }}</label>
+        <textarea name="answer_{{ q.id }}" class="form-control" rows="4">{{ answers_map.get(q.id).answer_text if answers_map.get(q.id) }}</textarea>
+      </div>
+    {% endfor %}
+    <button id="submit-btn" class="btn btn-primary">Submit Answers</button>
+  </form>
+
+  <script>
+    (function(){
+      // Configuration from template
+      const attemptId = {{ attempt.id }};
+      const examId = {{ exam.id }};
+      const studentId = {{ attempt.student_id }};
+      const durationMinutes = {{ exam.duration_minutes or 0 }};
+      const startedAtRaw = {% if attempt.started_at %}"{{ attempt.started_at.isoformat() }}"{% else %}null{% endif %};
+
+      // One-time enforcement via localStorage key
+      const storageKey = 'attempt_submitted_' + attemptId;
+
+      const submitBtn = document.getElementById('submit-btn');
+      const form = document.getElementById('attempt-form');
+
+      function setFormReadOnly() {
+        const areas = form.querySelectorAll('textarea, input, button');
+        areas.forEach(el => el.setAttribute('disabled','disabled'));
+      }
+
+      // If already submitted locally, disable
+      if (localStorage.getItem(storageKey)) {
+        setFormReadOnly();
+        const countdown = document.getElementById('countdown');
+        if (countdown) countdown.textContent = 'Submitted';
+      }
+
+      // Disable button after single click to prevent double submits
+      submitBtn.addEventListener('click', function(ev){
+        // mark localstorage to prevent repeated submits
+        localStorage.setItem(storageKey, '1');
+        submitBtn.textContent = 'Submitting...';
+        submitBtn.setAttribute('disabled','disabled');
+      });
+
+      // Countdown + auto-submit on timeout
+      function parseISO(s){ return s ? new Date(s) : new Date(); }
+
+      const startedAt = parseISO(startedAtRaw);
+      const endTime = new Date(startedAt.getTime() + durationMinutes * 60000);
+
+      function updateCountdown(){
+        const now = new Date();
+        let diff = Math.max(0, Math.floor((endTime - now)/1000));
+        const mins = Math.floor(diff/60).toString().padStart(2,'0');
+        const secs = (diff%60).toString().padStart(2,'0');
+        const countdown = document.getElementById('countdown');
+        if (countdown) countdown.textContent = mins + ':' + secs;
+        if (diff <= 0){
+          // time's up — auto-submit
+          doAutoSubmit();
+          clearInterval(timer);
+        }
+      }
+
+      let timer = setInterval(updateCountdown, 1000);
+      updateCountdown();
+
+      function collectAnswers(){
+        const answers = [];
+        const areas = form.querySelectorAll('textarea[name^="answer_"]');
+        areas.forEach(a => {
+          const name = a.getAttribute('name');
+          const qid = parseInt(name.split('_')[1]);
+          answers.push({ question_id: qid, answer_text: a.value });
+        });
+        return answers;
+      }
+
+      async function doAutoSubmit(){
+        // prevent multiple auto-submits
+        if (localStorage.getItem(storageKey)) return;
+        localStorage.setItem(storageKey, '1');
+        setFormReadOnly();
+
+        const payload = { answers: collectAnswers() };
+        try{
+          await fetch(`/exam/${examId}/timeout?student_id=${studentId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          // Redirect to attempts list after timeout
+          window.location.href = `/essay/${examId}/attempts`;
+        } catch(err){
+          // best-effort: still redirect
+          window.location.href = `/essay/${examId}/attempts`;
+        }
+      }
+
+    })();
+  </script>
+  </form>
+</div>
+{% endblock %}

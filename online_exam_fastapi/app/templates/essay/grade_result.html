@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <h2>Grading Result</h2>
+  <p>Attempt: {{ attempt_id }}</p>
+  <p>Total Marks: {{ total_marks }}</p>
+  <p>Answers graded: {{ answers_graded }}</p>
+
+  <hr />
+  <h4>Per-question breakdown</h4>
+  <div class="mb-3">
+    {% for b in breakdown %}
+      <div class="card mb-2">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <div><strong>Q{{ loop.index }}:</strong> {{ b.question_text }}</div>
+            <div class="small text-muted">Max: {{ b.max_marks }}</div>
+          </div>
+          <div style="min-width:140px; text-align:right;">
+            <div class="h5 mb-0">{{ b.marks_awarded }} / {{ b.max_marks }}</div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <a class="btn btn-primary" href="/essay">Back to Essay</a>
+</div>
+{% endblock %}

@@ -3,26 +3,29 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
-
 from app.auth_utils import create_reset_token, hash_password, verify_password
 from app.database import get_session
 from app.deps import get_current_user
 from app.models import PasswordResetToken, Student, User
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlmodel import Session, select
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/login")
-def login_form(request: Request, current_user: Optional[User] = Depends(get_current_user)):
+def login_form(
+    request: Request, current_user: Optional[User] = Depends(get_current_user)
+):
     if current_user:
         # Already logged in – send to a sensible default depending on role
         if current_user.role in ("lecturer", "admin"):
-            return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(
+                url="/courses/", status_code=status.HTTP_303_SEE_OTHER
+            )
         return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
 
     context = {"request": request, "form": None, "error": None}
@@ -56,7 +59,7 @@ def login(
                 user = None
             elif not user:
                 error = "Invalid email or password."
-    
+
     elif login_type == "lecturer":
         if not staff_id:
             error = "Staff ID is required for lecturer login."
@@ -66,8 +69,7 @@ def login(
             # Find lecturer by staff_id
             user = session.exec(
                 select(User).where(
-                    User.staff_id == staff_id_clean,
-                    User.role == "lecturer"
+                    User.staff_id == staff_id_clean, User.role == "lecturer"
                 )
             ).first()
             if not user:
@@ -75,7 +77,7 @@ def login(
             elif user and user.role != "lecturer":
                 error = "This Staff ID is not registered as a lecturer account."
                 user = None
-    
+
     elif login_type == "student":
         if not matric_no:
             error = "Student ID / Matric Number is required for student login."
@@ -98,12 +100,14 @@ def login(
     # Validate password and account status
     if user:
         if not verify_password(password, user.password_hash):
-            error = "Invalid credentials. Please check your login details and try again."
+            error = (
+                "Invalid credentials. Please check your login details and try again."
+            )
             user = None
         elif not user.is_active:
             error = "Your account is inactive. Please contact an administrator."
             user = None
-        elif hasattr(user, 'status') and user.status == "suspended":
+        elif hasattr(user, "status") and user.status == "suspended":
             error = "Your account has been suspended. Please contact an administrator."
             user = None
 
@@ -119,6 +123,7 @@ def login(
 
     # Update last_login timestamp
     from datetime import datetime
+
     user.last_login = datetime.utcnow()
     session.add(user)
     session.commit()
@@ -126,11 +131,11 @@ def login(
 
     # Clear any existing session first to avoid conflicts
     request.session.clear()
-    
+
     # Successful login: remember user in session
     # Set session before redirect to ensure it's saved
     request.session["user_id"] = user.id
-    
+
     # Verify the user role one more time before redirecting
     # This ensures we're redirecting the correct user
     if user.role == "admin":
@@ -141,7 +146,7 @@ def login(
         redirect_url = "/"  # Home page for students
 
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-    
+
     # Ensure session is saved by setting it in the response
     # The session middleware will handle saving the session cookie
     return response
@@ -196,14 +201,16 @@ def register_student(
         errors["matric_no"] = "Student ID must be at least 3 characters long."
     elif len(matric_clean) > 50:
         errors["matric_no"] = "Student ID must not exceed 50 characters."
-    
+
     # Check for duplicate matric_no
     if "matric_no" not in errors:
         existing_student_matric = session.exec(
             select(Student).where(Student.matric_no == matric_clean)
         ).first()
         if existing_student_matric:
-            errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+            errors["matric_no"] = (
+                "This Student ID is already registered. Please use a different ID or contact support."
+            )
 
     # Email validation
     if not email_clean:
@@ -215,15 +222,21 @@ def register_student(
 
     # Check for existing email in both User and Student tables (only if email format is valid)
     if "email" not in errors:
-        existing_user = session.exec(select(User).where(User.email == email_clean)).first()
+        existing_user = session.exec(
+            select(User).where(User.email == email_clean)
+        ).first()
         if existing_user:
-            errors["email"] = "This email is already registered. Please use a different email or try logging in."
+            errors["email"] = (
+                "This email is already registered. Please use a different email or try logging in."
+            )
         else:
             existing_student_email = session.exec(
                 select(Student).where(Student.email == email_clean)
             ).first()
             if existing_student_email:
-                errors["email"] = "This email is already registered. Please use a different email or try logging in."
+                errors["email"] = (
+                    "This email is already registered. Please use a different email or try logging in."
+                )
 
     # Optional: Program validation
     if program_clean:
@@ -242,7 +255,7 @@ def register_student(
     # Optional: Phone number validation
     if phone_clean:
         # Remove common phone number characters for validation
-        phone_digits = ''.join(filter(str.isdigit, phone_clean))
+        phone_digits = "".join(filter(str.isdigit, phone_clean))
         if len(phone_digits) < 7 or len(phone_digits) > 15:
             errors["phone_number"] = "Please enter a valid phone number (7-15 digits)."
         elif len(phone_clean) > 20:
@@ -262,7 +275,9 @@ def register_student(
     elif not any(c.isdigit() for c in password):
         errors["password"] = "Password must contain at least one number."
     elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
-        errors["password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        errors["password"] = (
+            "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        )
 
     # Confirm password validation
     if not confirm_password:
@@ -284,7 +299,9 @@ def register_student(
             "errors": errors,
         }
         return templates.TemplateResponse(
-            "auth/register_student.html", context, status_code=status.HTTP_400_BAD_REQUEST
+            "auth/register_student.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     # Create Student record
@@ -441,5 +458,3 @@ def reset_password(
     session.commit()
 
     return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
-
-

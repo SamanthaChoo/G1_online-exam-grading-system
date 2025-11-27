@@ -2,15 +2,14 @@
 
 from typing import List, Optional
 
+from app.database import get_session
+from app.deps import require_role
+from app.models import Course, CourseLecturer, Enrollment, Exam, Student, User
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlmodel import Session, select
-
-from app.database import get_session
-from app.deps import get_current_user, require_role
-from app.models import Course, CourseLecturer, Enrollment, Exam, Student, User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -27,12 +26,18 @@ def list_courses(
     """List courses with optional sorting by column."""
     courses = session.exec(select(Course)).all()
     exam_counts = dict(
-        session.exec(select(Exam.course_id, func.count(Exam.id)).group_by(Exam.course_id)).all()
+        session.exec(
+            select(Exam.course_id, func.count(Exam.id)).group_by(Exam.course_id)
+        ).all()
     )
-    
+
     # Get enrollment counts for each course
     enrollment_counts = dict(
-        session.exec(select(Enrollment.course_id, func.count(Enrollment.id)).group_by(Enrollment.course_id)).all()
+        session.exec(
+            select(Enrollment.course_id, func.count(Enrollment.id)).group_by(
+                Enrollment.course_id
+            )
+        ).all()
     )
 
     # Get lecturer assignments for each course
@@ -66,7 +71,9 @@ def list_courses(
         "course_lecturers": course_lecturers_map,
         "sort": sort,
         "direction": "desc" if is_desc else "asc",
-        "has_sort": (sort not in (None, "", "created") or (direction or "desc").lower() != "desc"),
+        "has_sort": (
+            sort not in (None, "", "created") or (direction or "desc").lower() != "desc"
+        ),
         "current_user": current_user,
     }
     return templates.TemplateResponse("courses/list.html", context)
@@ -80,9 +87,9 @@ def new_course_form(
 ):
     # Fetch all active lecturers
     lecturers = session.exec(
-        select(User).where(User.role == "lecturer", User.is_active == True)
+        select(User).where(User.role == "lecturer", User.is_active.is_(True))
     ).all()
-    
+
     context = {
         "request": request,
         "form": None,
@@ -116,9 +123,10 @@ def create_course(
         errors["name"] = "Course name is required."
 
     # Check for duplicate code (case-insensitive)
-    if code_clean and session.exec(
-        select(Course).where(Course.code == code_clean)
-    ).first():
+    if (
+        code_clean
+        and session.exec(select(Course).where(Course.code == code_clean)).first()
+    ):
         errors["code"] = "This course code is already in use. Please choose another."
 
     # Validate lecturer IDs if provided
@@ -128,13 +136,13 @@ def create_course(
             lecturer_ids_list = [int(lid) for lid in lecturer_ids if lid]
         else:
             lecturer_ids_list = [int(lecturer_ids)]
-        
+
         # Verify all lecturer IDs are valid lecturers
         valid_lecturers = session.exec(
             select(User).where(
                 User.id.in_(lecturer_ids_list),
                 User.role == "lecturer",
-                User.is_active == True
+                User.is_active.is_(True),
             )
         ).all()
         if len(valid_lecturers) != len(lecturer_ids_list):
@@ -143,9 +151,9 @@ def create_course(
     if errors:
         # Fetch all lecturers for the form
         lecturers = session.exec(
-            select(User).where(User.role == "lecturer", User.is_active == True)
+            select(User).where(User.role == "lecturer", User.is_active.is_(True))
         ).all()
-        
+
         context = {
             "request": request,
             "form": {"code": code, "name": name, "description": description or ""},
@@ -167,7 +175,9 @@ def create_course(
     # Assign lecturers
     if lecturer_ids_list:
         for lecturer_id in lecturer_ids_list:
-            course_lecturer = CourseLecturer(course_id=course.id, lecturer_id=lecturer_id)
+            course_lecturer = CourseLecturer(
+                course_id=course.id, lecturer_id=lecturer_id
+            )
             session.add(course_lecturer)
         session.commit()
 
@@ -185,7 +195,9 @@ def _get_course(course_id: int, session: Session) -> Course:
 def enroll_form(
     course_id: int,
     request: Request,
-    q: Optional[str] = Query(None, description="Search students by name, email, or matric"),
+    q: Optional[str] = Query(
+        None, description="Search students by name, email, or matric"
+    ),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
@@ -193,11 +205,13 @@ def enroll_form(
 
     - Left: currently enrolled students
     - Right: available students that are not yet enrolled (optionally filtered by search query)
-    
+
     Note: Students are fetched from the Student database table, not from User table.
     """
     course = _get_course(course_id, session)
-    enrollments = session.exec(select(Enrollment).where(Enrollment.course_id == course_id)).all()
+    enrollments = session.exec(
+        select(Enrollment).where(Enrollment.course_id == course_id)
+    ).all()
     enrolled_ids = {enrollment.student_id for enrollment in enrollments}
 
     # Fetch all students from the Student database table
@@ -258,25 +272,25 @@ def enroll_students(
 
 @router.get("/{course_id}/edit")
 def edit_course_form(
-    course_id: int, 
-    request: Request, 
+    course_id: int,
+    request: Request,
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     """Show edit form for an existing course."""
     course = _get_course(course_id, session)
-    
+
     # Get currently assigned lecturers
     course_lecturers = session.exec(
         select(CourseLecturer).where(CourseLecturer.course_id == course_id)
     ).all()
     selected_lecturer_ids = [cl.lecturer_id for cl in course_lecturers]
-    
+
     # Fetch all active lecturers
     lecturers = session.exec(
-        select(User).where(User.role == "lecturer", User.is_active == True)
+        select(User).where(User.role == "lecturer", User.is_active.is_(True))
     ).all()
-    
+
     form = {
         "code": course.code,
         "name": course.name,
@@ -332,13 +346,13 @@ def update_course(
             lecturer_ids_list = [int(lid) for lid in lecturer_ids if lid]
         else:
             lecturer_ids_list = [int(lecturer_ids)]
-        
+
         # Verify all lecturer IDs are valid lecturers
         valid_lecturers = session.exec(
             select(User).where(
                 User.id.in_(lecturer_ids_list),
                 User.role == "lecturer",
-                User.is_active == True
+                User.is_active.is_(True),
             )
         ).all()
         if len(valid_lecturers) != len(lecturer_ids_list):
@@ -347,15 +361,15 @@ def update_course(
     if errors:
         # Fetch all lecturers for the form
         lecturers = session.exec(
-            select(User).where(User.role == "lecturer", User.is_active == True)
+            select(User).where(User.role == "lecturer", User.is_active.is_(True))
         ).all()
-        
+
         # Get currently assigned lecturers
         course_lecturers = session.exec(
             select(CourseLecturer).where(CourseLecturer.course_id == course_id)
         ).all()
         current_lecturer_ids = [cl.lecturer_id for cl in course_lecturers]
-        
+
         context = {
             "request": request,
             "form": {"code": code, "name": name, "description": description or ""},
@@ -363,7 +377,9 @@ def update_course(
             "is_edit": True,
             "course_id": course_id,
             "lecturers": lecturers,
-            "selected_lecturer_ids": lecturer_ids_list if lecturer_ids_list else current_lecturer_ids,
+            "selected_lecturer_ids": (
+                lecturer_ids_list if lecturer_ids_list else current_lecturer_ids
+            ),
             "current_user": current_user,
         }
         return templates.TemplateResponse(
@@ -396,4 +412,3 @@ def update_course(
     session.commit()
 
     return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
-

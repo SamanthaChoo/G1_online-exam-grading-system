@@ -1,7 +1,8 @@
 """Authentication utilities: password hashing and token generation."""
 
-from passlib.context import CryptContext
 import secrets
+
+from passlib.context import CryptContext
 
 # Configure bcrypt to avoid compatibility issues with bcrypt 4.0+
 # Use "2b" ident and disable bug detection to prevent 72-byte limit errors
@@ -26,5 +27,3 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 def create_reset_token() -> str:
     """Generate a random URL-safe token for password reset."""
     return secrets.token_urlsafe(32)
-
-

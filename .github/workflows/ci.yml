@@ -1,0 +1,67 @@
+name: CI
+
+# Continuous Integration pipeline for the repository
+# - Detects and runs on pushes and pull requests for main branches
+# - Sets up Python, installs dependencies, runs lint and tests
+# - Uses caching for pip to speed up repeated runs
+on:
+  push:
+    branches: [ main, master, kxy-dev ]
+  pull_request:
+    branches: [ main, master, kxy-dev ]
+
+jobs:
+  build:
+    name: Lint & Test (Python FastAPI)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-py-${{ matrix.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        # Install project dependencies if requirements detected, plus test/lint tools
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f online_exam_fastapi/requirements.txt ]; then pip install -r online_exam_fastapi/requirements.txt; fi
+          pip install flake8 pytest
+
+      - name: Run linter (flake8)
+        # Lint the project's `app` package using the repository .flake8 config
+        # This keeps local and CI linting consistent and excludes vendor/static folders.
+        run: |
+          echo "Running flake8 with .flake8 config..."
+          python -m flake8 app --config .flake8 || exit 1
+
+      - name: Run tests (pytest)
+        # Run unit tests; job will fail if any test fails
+        run: |
+          echo "Running pytest..."
+          pytest -q --maxfail=1 || exit 1
+
+      - name: Upload test results (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-output-${{ matrix.python-version }}
+          path: |
+            test-results || |
+            .pytest_cache || |
+            # no-op if none
+            |
