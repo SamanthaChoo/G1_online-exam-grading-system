@@ -43,16 +43,16 @@ jobs:
           pip install flake8 pytest
 
       - name: Run linter (flake8)
-        # Lint the project's `app` package using the repository .flake8 config
-        # This keeps local and CI linting consistent and excludes vendor/static folders.
+        # Lint the app inside the `online_exam_fastapi` folder to avoid legacy top-level `app/` code.
         run: |
-          echo "Running flake8 with .flake8 config..."
-          python -m flake8 app --config .flake8 || exit 1
+          echo "Running flake8 on online_exam_fastapi/app with .flake8 config..."
+          python -m flake8 online_exam_fastapi/app --config .flake8 || exit 1
 
       - name: Run tests (pytest)
-        # Run unit tests; job will fail if any test fails
+        # Run unit tests in the `online_exam_fastapi` package to match local dev setup
         run: |
-          echo "Running pytest..."
+          echo "Running pytest in online_exam_fastapi..."
+          cd online_exam_fastapi
           pytest -q --maxfail=1 || exit 1
 
       - name: Upload test results (if any)
