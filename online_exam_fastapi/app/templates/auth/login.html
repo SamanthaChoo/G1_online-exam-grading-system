@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .login-tabs {
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 1.5rem;
+  }
+  .login-tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6c757d;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  .login-tab:hover {
+    color: #0d6efd;
+    background-color: #f8f9fa;
+  }
+  .login-tab.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+  }
+  .login-form-container {
+    position: relative;
+    min-height: 300px;
+  }
+  .login-form {
+    display: none;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .login-form.active {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
+  }
+</style>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+      <div class="card shadow-sm border-0 auth-card">
+        <div class="card-body p-4">
+          <h1 class="h4 mb-3 text-center">Login</h1>
+          <p class="text-muted small text-center mb-4">
+            Sign in to access your exams and courses.
+          </p>
+
+          {% if error %}
+          <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+          </div>
+          {% endif %}
+
+          <!-- Tab Navigation -->
+          <div class="login-tabs d-flex">
+            <button type="button" class="login-tab active" data-tab="admin" onclick="switchTab('admin')">
+              <i class="bi bi-shield-check me-1"></i>Admin
+            </button>
+            <button type="button" class="login-tab" data-tab="lecturer" onclick="switchTab('lecturer')">
+              <i class="bi bi-person-badge me-1"></i>Lecturer
+            </button>
+            <button type="button" class="login-tab" data-tab="student" onclick="switchTab('student')">
+              <i class="bi bi-mortarboard me-1"></i>Student
+            </button>
+          </div>
+
+          <!-- Forms Container -->
+          <div class="login-form-container">
+            <!-- Admin Form -->
+            <form method="post" class="login-form active" id="admin-form" novalidate>
+              <input type="hidden" name="login_type" value="admin">
+              <div class="mb-3">
+                <label for="admin_email" class="form-label">Email</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="admin_email"
+                    name="email"
+                    value="{{ form.email if form and form.login_type == 'admin' else '' }}"
+                    autocomplete="email"
+                    placeholder="admin@example.com"
+                    required
+                  >
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="admin_password" class="form-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="admin_password"
+                    name="password"
+                    autocomplete="current-password"
+                    placeholder="Enter your password"
+                    required
+                  >
+                </div>
+              </div>
+              <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>Login as Admin
+                </button>
+              </div>
+            </form>
+
+            <!-- Lecturer Form -->
+            <form method="post" class="login-form" id="lecturer-form" novalidate>
+              <input type="hidden" name="login_type" value="lecturer">
+              <div class="mb-3">
+                <label for="lecturer_staff_id" class="form-label">Staff ID</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="lecturer_staff_id"
+                    name="staff_id"
+                    value="{{ form.staff_id if form and form.login_type == 'lecturer' else '' }}"
+                    autocomplete="username"
+                    placeholder="e.g. STF1023"
+                    required
+                  >
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="lecturer_password" class="form-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="lecturer_password"
+                    name="password"
+                    autocomplete="current-password"
+                    placeholder="Enter your password"
+                    required
+                  >
+                </div>
+              </div>
+              <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-info w-100">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>Login as Lecturer
+                </button>
+              </div>
+            </form>
+
+            <!-- Student Form -->
+            <form method="post" class="login-form" id="student-form" novalidate>
+              <input type="hidden" name="login_type" value="student">
+              <div class="mb-3">
+                <label for="student_matric" class="form-label">Student ID / Matric Number</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-mortarboard"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="student_matric"
+                    name="matric_no"
+                    value="{{ form.matric_no if form and form.login_type == 'student' else '' }}"
+                    autocomplete="username"
+                    placeholder="e.g. SWE1001"
+                    required
+                  >
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="student_password" class="form-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="student_password"
+                    name="password"
+                    autocomplete="current-password"
+                    placeholder="Enter your password"
+                    required
+                  >
+                </div>
+              </div>
+              <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-success w-100">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>Login as Student
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center small mt-3 pt-3 border-top">
+            <a href="/auth/request-reset" class="text-decoration-none">
+              <i class="bi bi-key me-1"></i>Forgot password?
+            </a>
+            <span class="text-muted">
+              New student?
+              <a href="/auth/register-student" class="text-decoration-none">Register here</a>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.login-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+  if (activeTab) {
+    activeTab.classList.add('active');
+  }
+
+  // Hide all forms first
+  document.querySelectorAll('.login-form').forEach(form => {
+    form.classList.remove('active');
+  });
+  
+  // Show the active form
+  const activeForm = document.getElementById(`${tabName}-form`);
+  if (activeForm) {
+    activeForm.classList.add('active');
+    // Focus first input in active form after a short delay
+    setTimeout(() => {
+      const firstInput = activeForm.querySelector('input:not([type="hidden"])');
+      if (firstInput) {
+        firstInput.focus();
+      }
+    }, 150);
+  }
+}
+
+// Set active tab based on form data if there was an error
+{% if form and form.login_type %}
+document.addEventListener('DOMContentLoaded', function() {
+  switchTab('{{ form.login_type }}');
+});
+{% endif %}
+</script>
+{% endblock %}
+
+

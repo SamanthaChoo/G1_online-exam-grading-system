@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="py-5 light-background">
+  <div class="container">
+    <div class="row align-items-center mb-5">
+      <div class="col-lg-6">
+        <h1 class="display-5 fw-bold mb-3">Online Examination &amp; Grading System</h1>
+        <p class="lead text-muted mb-4">
+          Simple, secure digital exams for universities and academic institutions.
+        </p>
+        <div class="d-flex flex-column flex-sm-row gap-3 mb-3">
+          <a href="/auth/login" class="btn btn-primary btn-lg hero-cta-btn">
+            I'm a Lecturer – Login
+          </a>
+          <a href="/auth/login" class="btn btn-outline-primary btn-lg hero-cta-btn">
+            I'm a Student – Login
+          </a>
+        </div>
+        <p class="small text-muted">
+          New here? <a href="/auth/register-student">Register as student</a>
+        </p>
+      </div>
+      <div class="col-lg-6 text-center">
+        <div class="hero-illustration-placeholder">
+          <i class="bi bi-mortarboard-fill" style="font-size: 12rem; color: #0d6efd; opacity: 0.2;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Key Features -->
+<section class="py-5">
+  <div class="container">
+    <div class="row text-center mb-4">
+      <div class="col-lg-8 mx-auto">
+        <h2 class="h3 mb-3">Key Features</h2>
+        <p class="text-muted">Everything you need for modern online assessments</p>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4 col-sm-6">
+        <div class="text-center">
+          <div class="feature-icon mb-3">
+            <i class="bi bi-file-earmark-plus" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h6 mb-2">Easy Exam Creation</h3>
+          <p class="small text-muted mb-0">Define titles, subjects, duration, and link exams to courses in minutes.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6">
+        <div class="text-center">
+          <div class="feature-icon mb-3">
+            <i class="bi bi-clock" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h6 mb-2">Timed Assessments</h3>
+          <p class="small text-muted mb-0">Start and end times are enforced, with clear schedules for every exam.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6">
+        <div class="text-center">
+          <div class="feature-icon mb-3">
+            <i class="bi bi-send-check" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h6 mb-2">Auto-submission</h3>
+          <p class="small text-muted mb-0">Exams automatically submit when time expires, ensuring fairness.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6">
+        <div class="text-center">
+          <div class="feature-icon mb-3">
+            <i class="bi bi-link-45deg" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h6 mb-2">Course-linked Exams</h3>
+          <p class="small text-muted mb-0">Exams are always associated with a course and its enrolled students.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6">
+        <div class="text-center">
+          <div class="feature-icon mb-3">
+            <i class="bi bi-shield-check" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h6 mb-2">Role-Based Access</h3>
+          <p class="small text-muted mb-0">Separate experiences for admins, lecturers, and students keep things clear.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6">
+        <div class="text-center">
+          <div class="feature-icon mb-3">
+            <i class="bi bi-graph-up" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h6 mb-2">Built for Growth</h3>
+          <p class="small text-muted mb-0">Designed in sprints so new features can be added easily.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+    <!-- Quotes rotator -->
+    <div class="row mb-5">
+      <div class="col-lg-8 mx-auto">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center py-4">
+            <div id="quote-rotator" style="transition: opacity 0.4s ease; opacity: 1;">
+              <p id="quote-text" class="mb-2 fs-5"></p>
+              <p id="quote-author" class="small text-muted mb-0"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!-- Who Uses This System -->
+<section class="py-5 light-background">
+  <div class="container">
+    <div class="row text-center mb-4">
+      <div class="col-lg-8 mx-auto">
+        <h2 class="h3 mb-3">Who Uses This System</h2>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="text-center">
+          <div class="mb-3">
+            <i class="bi bi-person-badge" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h5 mb-3">👨‍🏫 Lecturers</h3>
+          <ul class="list-unstyled small text-muted">
+            <li class="mb-2">Create / edit courses</li>
+            <li class="mb-2">Manage exam schedule</li>
+            <li class="mb-0">Clear instructions</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-center">
+          <div class="mb-3">
+            <i class="bi bi-mortarboard" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h5 mb-3">🎓 Students</h3>
+          <ul class="list-unstyled small text-muted">
+            <li class="mb-2">Register & join courses</li>
+            <li class="mb-2">Take timed exams</li>
+            <li class="mb-0">View results</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-center">
+          <div class="mb-3">
+            <i class="bi bi-shield-lock" style="font-size: 3rem; color: #0d6efd;"></i>
+          </div>
+          <h3 class="h5 mb-3">🛡 Admin</h3>
+          <ul class="list-unstyled small text-muted">
+            <li class="mb-2">Manage roles</li>
+            <li class="mb-2">Maintain system integrity</li>
+            <li class="mb-0">Support users</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Final Call-to-Action Banner -->
+<section class="py-5">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <div class="text-center py-5 px-4" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-radius: 1rem; color: white;">
+          <h2 class="h3 mb-3 text-white">🚀 Start now — secure assessments for everyone</h2>
+          <p class="mb-4 text-white-50">Join lecturers and students already using our platform</p>
+          <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+            <a href="/auth/login" class="btn btn-light btn-lg">Login</a>
+            <a href="/auth/register-student" class="btn btn-outline-light btn-lg">Register</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  </div>
+</section>
+
+<script>
+  (function () {
+    const quotes = [
+      // Learning & Wisdom
+      { text: "The beautiful thing about learning is nobody can take it away from you.", author: "B.B. King" },
+      { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
+      { text: "Learning is a treasure that will follow its owner everywhere.", author: "Chinese Proverb" },
+      // Motivation & Success
+      { text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" },
+      { text: "If you fail to plan, you are planning to fail.", author: "Benjamin Franklin" },
+      { text: "The future belongs to those who prepare for it today.", author: "Malcolm X" },
+      { text: "Believe you can, and you’re halfway there.", author: "Theodore Roosevelt" },
+      { text: "Failure is simply the opportunity to begin again, this time more intelligently.", author: "Henry Ford" },
+      { text: "Don’t let what you cannot do interfere with what you can do.", author: "John Wooden" },
+      { text: "Work in silence; let your success make the noise.", author: "Frank Ocean (attributed)" },
+      // Perseverance
+      { text: "Difficult roads often lead to beautiful destinations.", author: "Zig Ziglar (attributed)" },
+      { text: "Mistakes are proof that you are trying.", author: "Jennifer Lim (commonly attributed)" },
+    ];
+
+    const textEl = document.getElementById("quote-text");
+    const authorEl = document.getElementById("quote-author");
+    const rotator = document.getElementById("quote-rotator");
+    if (!textEl || !authorEl || !rotator) return;
+
+    let index = 0;
+
+    function showQuote() {
+      const quote = quotes[index];
+      rotator.style.opacity = 0;
+      setTimeout(() => {
+        textEl.textContent = "“" + quote.text + "”";
+        authorEl.textContent = "— " + quote.author;
+        rotator.style.opacity = 1;
+        index = (index + 1) % quotes.length;
+      }, 400);
+    }
+
+    // initial
+    showQuote();
+    setInterval(showQuote, 3000);
+  })();
+</script>
+
+{% endblock %}
+
+
+

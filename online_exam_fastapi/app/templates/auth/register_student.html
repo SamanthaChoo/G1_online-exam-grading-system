@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+      <div class="card shadow-sm border-0 auth-card">
+        <div class="card-body p-4">
+          <h1 class="h4 mb-3 text-center">Student Registration</h1>
+          <p class="text-muted small text-center mb-4">
+            Create your account to join courses and take exams.
+          </p>
+
+          {% if errors %}
+          <div class="alert alert-danger" role="alert">
+            <strong>There were some problems with your submission:</strong>
+            <ul class="mb-0 mt-2">
+              {% for field, message in errors.items() %}
+              <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          <form method="post" novalidate id="registerForm">
+            <div class="mb-3">
+              <label for="name" class="form-label">Full Name</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control {% if errors.name %}is-invalid{% endif %}"
+                  id="name"
+                  name="name"
+                  value="{{ form.name if form else '' }}"
+                  required
+                >
+                <span class="input-group-text validation-icon" id="name-icon" style="display: none;"></span>
+              </div>
+              {% if errors.name %}
+              <div class="invalid-feedback d-block">
+                {{ errors.name }}
+              </div>
+              {% endif %}
+              <div class="invalid-feedback" id="name-error" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+              <label for="matric_no" class="form-label">Matric / Student ID</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control {% if errors.matric_no %}is-invalid{% endif %}"
+                  id="matric_no"
+                  name="matric_no"
+                  value="{{ form.matric_no if form else '' }}"
+                  required
+                >
+                <span class="input-group-text validation-icon" id="matric-icon" style="display: none;"></span>
+              </div>
+              {% if errors.matric_no %}
+              <div class="invalid-feedback d-block">
+                {{ errors.matric_no }}
+              </div>
+              {% endif %}
+              <div class="invalid-feedback" id="matric-error" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <div class="input-group">
+                <input
+                  type="email"
+                  class="form-control {% if errors.email %}is-invalid{% endif %}"
+                  id="email"
+                  name="email"
+                  value="{{ form.email if form else '' }}"
+                  required
+                >
+                <span class="input-group-text validation-icon" id="email-icon" style="display: none;"></span>
+              </div>
+              {% if errors.email %}
+              <div class="invalid-feedback d-block">
+                {{ errors.email }}
+              </div>
+              {% endif %}
+              <div class="invalid-feedback" id="email-error" style="display: none;"></div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="program" class="form-label">Program / Major <span class="text-muted small">(Optional)</span></label>
+                <input
+                  type="text"
+                  class="form-control {% if errors.program %}is-invalid{% endif %}"
+                  id="program"
+                  name="program"
+                  value="{{ form.program if form else '' }}"
+                  placeholder="e.g., SWE, BIM"
+                >
+                {% if errors.program %}
+                <div class="invalid-feedback d-block">
+                  {{ errors.program }}
+                </div>
+                {% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="year_of_study" class="form-label">Year of Study <span class="text-muted small">(Optional)</span></label>
+                <select
+                  class="form-select {% if errors.year_of_study %}is-invalid{% endif %}"
+                  id="year_of_study"
+                  name="year_of_study"
+                >
+                  <option value="">Select Year</option>
+                  <option value="1" {% if form and form.year_of_study == '1' %}selected{% endif %}>Year 1</option>
+                  <option value="2" {% if form and form.year_of_study == '2' %}selected{% endif %}>Year 2</option>
+                  <option value="3" {% if form and form.year_of_study == '3' %}selected{% endif %}>Year 3</option>
+                  <option value="4" {% if form and form.year_of_study == '4' %}selected{% endif %}>Year 4</option>
+                </select>
+                {% if errors.year_of_study %}
+                <div class="invalid-feedback d-block">
+                  {{ errors.year_of_study }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="phone_number" class="form-label">Phone Number <span class="text-muted small">(Optional)</span></label>
+              <input
+                type="tel"
+                class="form-control {% if errors.phone_number %}is-invalid{% endif %}"
+                id="phone_number"
+                name="phone_number"
+                value="{{ form.phone_number if form else '' }}"
+                placeholder="e.g., +60123456789"
+              >
+              {% if errors.phone_number %}
+              <div class="invalid-feedback d-block">
+                {{ errors.phone_number }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                  <input
+                    type="password"
+                    class="form-control {% if errors.password %}is-invalid{% endif %}"
+                    id="password"
+                    name="password"
+                    required
+                  >
+                  <span class="input-group-text validation-icon" id="password-icon" style="display: none;"></span>
+                </div>
+                {% if errors.password %}
+                <div class="invalid-feedback d-block">
+                  {{ errors.password }}
+                </div>
+                {% endif %}
+                <div class="invalid-feedback" id="password-error" style="display: none;"></div>
+                <div class="password-requirements mt-3" id="password-requirements" style="display: none;">
+                  <div class="small fw-semibold text-muted mb-2">Password Requirements:</div>
+                  <div class="password-req-list">
+                    <div id="req-length" class="password-req-item">
+                      <span class="req-icon"><i class="bi bi-circle"></i></span>
+                      <span class="req-text">At least 8 characters</span>
+                    </div>
+                    <div id="req-upper" class="password-req-item">
+                      <span class="req-icon"><i class="bi bi-circle"></i></span>
+                      <span class="req-text">One uppercase letter</span>
+                    </div>
+                    <div id="req-lower" class="password-req-item">
+                      <span class="req-icon"><i class="bi bi-circle"></i></span>
+                      <span class="req-text">One lowercase letter</span>
+                    </div>
+                    <div id="req-number" class="password-req-item">
+                      <span class="req-icon"><i class="bi bi-circle"></i></span>
+                      <span class="req-text">One number</span>
+                    </div>
+                    <div id="req-special" class="password-req-item">
+                      <span class="req-icon"><i class="bi bi-circle"></i></span>
+                      <span class="req-text">One special character (!@#$%^&*...)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <div class="input-group">
+                  <input
+                    type="password"
+                    class="form-control {% if errors.confirm_password %}is-invalid{% endif %}"
+                    id="confirm_password"
+                    name="confirm_password"
+                    required
+                  >
+                  <span class="input-group-text validation-icon" id="confirm-icon" style="display: none;"></span>
+                </div>
+                {% if errors.confirm_password %}
+                <div class="invalid-feedback d-block">
+                  {{ errors.confirm_password }}
+                </div>
+                {% endif %}
+                <div class="invalid-feedback" id="confirm-error" style="display: none;"></div>
+              </div>
+            </div>
+
+            <div class="d-grid mb-3">
+              <button type="submit" class="btn btn-primary w-100">
+                Create Account
+              </button>
+            </div>
+          </form>
+
+          <hr>
+          <p class="small mb-0 text-center">
+            Already have an account?
+            <a href="/auth/login">Login here</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .validation-icon {
+    background-color: transparent;
+    border-left: none;
+    padding: 0.375rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .validation-icon .bi-check-circle-fill {
+    color: #198754;
+    font-size: 1.1rem;
+  }
+  .validation-icon .bi-x-circle-fill {
+    color: #dc3545;
+    font-size: 1.1rem;
+  }
+  
+  .input-group .form-control.is-valid {
+    border-right: none;
+  }
+  
+  .input-group .form-control.is-valid + .input-group-text {
+    border-left: none;
+  }
+  
+  .input-group .form-control.is-invalid {
+    border-right: none;
+  }
+  
+  .input-group .form-control.is-invalid + .input-group-text {
+    border-left: none;
+  }
+  
+  /* Password Requirements Styling */
+  .password-requirements {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease-in;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .password-req-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .password-req-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    padding: 0.25rem 0;
+  }
+  
+  .password-req-item .req-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+  
+  .password-req-item .req-icon i {
+    font-size: 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .password-req-item .req-text {
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    line-height: 1.4;
+  }
+  
+  /* Default state - muted */
+  .password-req-item {
+    color: #6c757d;
+  }
+  
+  .password-req-item .req-icon i {
+    color: #adb5bd;
+  }
+  
+  /* Valid state - green with checkmark */
+  .password-req-item.valid {
+    color: #198754;
+  }
+  
+  .password-req-item.valid .req-icon i {
+    color: #198754;
+    font-size: 1.1rem;
+  }
+  
+  .password-req-item.valid .req-text {
+    color: #198754;
+    font-weight: 500;
+  }
+  
+  /* Invalid state (when user is typing but requirement not met) */
+  .password-req-item.invalid {
+    color: #6c757d;
+  }
+  
+  .password-req-item.invalid .req-icon i {
+    color: #adb5bd;
+  }
+  
+  /* Subtle hover effect */
+  .password-req-item:hover {
+    transform: translateX(2px);
+  }
+</style>
+
+<script>
+(function() {
+  const nameInput = document.getElementById('name');
+  const matricInput = document.getElementById('matric_no');
+  const emailInput = document.getElementById('email');
+  const programInput = document.getElementById('program');
+  const yearInput = document.getElementById('year_of_study');
+  const phoneInput = document.getElementById('phone_number');
+  const passwordInput = document.getElementById('password');
+  const confirmInput = document.getElementById('confirm_password');
+
+  function showValidation(input, isValid, message, iconId, errorId) {
+    const icon = document.getElementById(iconId);
+    const errorEl = document.getElementById(errorId);
+    
+    if (input.value.trim() === '') {
+      input.classList.remove('is-valid', 'is-invalid');
+      icon.style.display = 'none';
+      if (errorEl) errorEl.style.display = 'none';
+      return;
+    }
+
+    if (isValid) {
+      input.classList.remove('is-invalid');
+      input.classList.add('is-valid');
+      icon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+      icon.style.display = 'block';
+      if (errorEl) {
+        errorEl.style.display = 'none';
+        errorEl.textContent = '';
+      }
+    } else {
+      input.classList.remove('is-valid');
+      input.classList.add('is-invalid');
+      icon.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
+      icon.style.display = 'block';
+      if (errorEl) {
+        errorEl.style.display = 'block';
+        errorEl.textContent = message;
+      }
+    }
+  }
+
+  function validateName() {
+    const value = nameInput.value.trim();
+    if (value.length < 2) {
+      showValidation(nameInput, false, 'Name must be at least 2 characters long.', 'name-icon', 'name-error');
+    } else if (value.length > 100) {
+      showValidation(nameInput, false, 'Name must not exceed 100 characters.', 'name-icon', 'name-error');
+    } else {
+      showValidation(nameInput, true, '', 'name-icon', 'name-error');
+    }
+  }
+
+  function validateMatric() {
+    const value = matricInput.value.trim();
+    if (value.length < 3) {
+      showValidation(matricInput, false, 'Student ID must be at least 3 characters long.', 'matric-icon', 'matric-error');
+    } else if (value.length > 50) {
+      showValidation(matricInput, false, 'Student ID must not exceed 50 characters.', 'matric-icon', 'matric-error');
+    } else {
+      showValidation(matricInput, true, '', 'matric-icon', 'matric-error');
+    }
+  }
+
+  function validateEmail() {
+    const value = emailInput.value.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      showValidation(emailInput, false, 'Please enter a valid email address.', 'email-icon', 'email-error');
+    } else if (value.length > 255) {
+      showValidation(emailInput, false, 'Email address is too long.', 'email-icon', 'email-error');
+    } else {
+      showValidation(emailInput, true, '', 'email-icon', 'email-error');
+    }
+  }
+
+  function validatePassword() {
+    const value = passwordInput.value;
+    const requirements = {
+      length: value.length >= 8,
+      upper: /[A-Z]/.test(value),
+      lower: /[a-z]/.test(value),
+      number: /[0-9]/.test(value),
+      special: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]/.test(value)
+    };
+
+    // Update requirement indicators
+    const updateRequirement = (elementId, isValid) => {
+      const element = document.getElementById(elementId);
+      const iconElement = element.querySelector('.req-icon i');
+      
+      if (isValid) {
+        element.classList.remove('invalid');
+        element.classList.add('valid');
+        iconElement.className = 'bi bi-check-circle-fill';
+      } else {
+        element.classList.remove('valid');
+        element.classList.add('invalid');
+        iconElement.className = 'bi bi-circle';
+      }
+    };
+    
+    updateRequirement('req-length', requirements.length);
+    updateRequirement('req-upper', requirements.upper);
+    updateRequirement('req-lower', requirements.lower);
+    updateRequirement('req-number', requirements.number);
+    updateRequirement('req-special', requirements.special);
+
+    const isValid = requirements.length && requirements.upper && requirements.lower && requirements.number && requirements.special;
+    
+    if (value.length > 128) {
+      showValidation(passwordInput, false, 'Password must not exceed 128 characters.', 'password-icon', 'password-error');
+    } else if (!isValid && value.length > 0) {
+      showValidation(passwordInput, false, 'Password does not meet all requirements.', 'password-icon', 'password-error');
+    } else if (value.length === 0) {
+      passwordInput.classList.remove('is-valid', 'is-invalid');
+      document.getElementById('password-icon').style.display = 'none';
+      document.getElementById('password-error').style.display = 'none';
+    } else {
+      showValidation(passwordInput, true, '', 'password-icon', 'password-error');
+    }
+
+    // Re-validate confirm password when password changes
+    if (confirmInput.value.length > 0) {
+      validateConfirmPassword();
+    }
+  }
+
+  function validateConfirmPassword() {
+    const value = confirmInput.value;
+    const passwordValue = passwordInput.value;
+    
+    if (value.length === 0) {
+      confirmInput.classList.remove('is-valid', 'is-invalid');
+      document.getElementById('confirm-icon').style.display = 'none';
+      document.getElementById('confirm-error').style.display = 'none';
+    } else if (value !== passwordValue) {
+      showValidation(confirmInput, false, 'Passwords do not match. Please try again.', 'confirm-icon', 'confirm-error');
+    } else {
+      showValidation(confirmInput, true, '', 'confirm-icon', 'confirm-error');
+    }
+  }
+
+  function validateProgram() {
+    const value = programInput.value.trim();
+    if (value.length === 0) {
+      programInput.classList.remove('is-valid', 'is-invalid');
+    } else if (value.length > 50) {
+      programInput.classList.remove('is-valid');
+      programInput.classList.add('is-invalid');
+    } else {
+      programInput.classList.remove('is-invalid');
+      programInput.classList.add('is-valid');
+    }
+  }
+
+  function validateYear() {
+    const value = yearInput.value;
+    if (value === '') {
+      yearInput.classList.remove('is-valid', 'is-invalid');
+    } else {
+      const year = parseInt(value);
+      if (isNaN(year) || year < 1 || year > 10) {
+        yearInput.classList.remove('is-valid');
+        yearInput.classList.add('is-invalid');
+      } else {
+        yearInput.classList.remove('is-invalid');
+        yearInput.classList.add('is-valid');
+      }
+    }
+  }
+
+  function validatePhone() {
+    const value = phoneInput.value.trim();
+    if (value.length === 0) {
+      phoneInput.classList.remove('is-valid', 'is-invalid');
+    } else {
+      const phoneDigits = value.replace(/\D/g, '');
+      if (phoneDigits.length < 7 || phoneDigits.length > 15 || value.length > 20) {
+        phoneInput.classList.remove('is-valid');
+        phoneInput.classList.add('is-invalid');
+      } else {
+        phoneInput.classList.remove('is-invalid');
+        phoneInput.classList.add('is-valid');
+      }
+    }
+  }
+
+  // Attach event listeners
+  nameInput.addEventListener('blur', validateName);
+  nameInput.addEventListener('input', function() {
+    if (nameInput.classList.contains('is-invalid') || nameInput.classList.contains('is-valid')) {
+      validateName();
+    }
+  });
+
+  matricInput.addEventListener('blur', validateMatric);
+  matricInput.addEventListener('input', function() {
+    if (matricInput.classList.contains('is-invalid') || matricInput.classList.contains('is-valid')) {
+      validateMatric();
+    }
+  });
+
+  emailInput.addEventListener('blur', validateEmail);
+  emailInput.addEventListener('input', function() {
+    if (emailInput.classList.contains('is-invalid') || emailInput.classList.contains('is-valid')) {
+      validateEmail();
+    }
+  });
+
+  passwordInput.addEventListener('focus', function() {
+    document.getElementById('password-requirements').style.display = 'block';
+  });
+  passwordInput.addEventListener('blur', function() {
+    validatePassword();
+    // Keep requirements visible if password is invalid
+    if (passwordInput.value.length > 0 && !passwordInput.classList.contains('is-valid')) {
+      document.getElementById('password-requirements').style.display = 'block';
+    } else if (passwordInput.classList.contains('is-valid')) {
+      document.getElementById('password-requirements').style.display = 'none';
+    }
+  });
+  passwordInput.addEventListener('input', validatePassword);
+
+  confirmInput.addEventListener('blur', validateConfirmPassword);
+  confirmInput.addEventListener('input', validateConfirmPassword);
+
+  // Optional fields validation
+  programInput.addEventListener('blur', validateProgram);
+  programInput.addEventListener('input', function() {
+    if (programInput.value.trim().length > 0) {
+      validateProgram();
+    }
+  });
+
+  yearInput.addEventListener('change', validateYear);
+  yearInput.addEventListener('blur', validateYear);
+
+  phoneInput.addEventListener('blur', validatePhone);
+  phoneInput.addEventListener('input', function() {
+    if (phoneInput.value.trim().length > 0) {
+      validatePhone();
+    }
+  });
+
+  // Form submission validation
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    validateName();
+    validateMatric();
+    validateEmail();
+    validateProgram();
+    validateYear();
+    validatePhone();
+    validatePassword();
+    validateConfirmPassword();
+
+    const hasErrors = document.querySelectorAll('.is-invalid').length > 0;
+    if (hasErrors) {
+      e.preventDefault();
+      return false;
+    }
+  });
+
+  // Initialize validation for fields with server-side errors or existing values
+  document.addEventListener('DOMContentLoaded', function() {
+    // Validate fields that have server-side errors or already have values
+    if (nameInput.value.trim() || nameInput.classList.contains('is-invalid')) {
+      validateName();
+    }
+    if (matricInput.value.trim() || matricInput.classList.contains('is-invalid')) {
+      validateMatric();
+    }
+    if (emailInput.value.trim() || emailInput.classList.contains('is-invalid')) {
+      validateEmail();
+    }
+    if (programInput.value.trim() || programInput.classList.contains('is-invalid')) {
+      validateProgram();
+    }
+    if (yearInput.value || yearInput.classList.contains('is-invalid')) {
+      validateYear();
+    }
+    if (phoneInput.value.trim() || phoneInput.classList.contains('is-invalid')) {
+      validatePhone();
+    }
+    if (passwordInput.value || passwordInput.classList.contains('is-invalid')) {
+      if (passwordInput.classList.contains('is-invalid')) {
+        document.getElementById('password-requirements').style.display = 'block';
+      }
+      validatePassword();
+    }
+    if (confirmInput.value || confirmInput.classList.contains('is-invalid')) {
+      validateConfirmPassword();
+    }
+  });
+})();
+</script>
+
+{% endblock %}
+
+

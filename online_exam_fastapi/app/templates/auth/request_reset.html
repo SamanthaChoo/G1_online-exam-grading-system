@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <h1 class="h5 mb-3 text-center">Reset Password</h1>
+          <p class="text-muted small text-center mb-4">
+            Enter your email address and we will send you a link to reset your password.
+          </p>
+
+          {% if submitted %}
+          <div class="alert alert-success" role="alert">
+            If the email you entered exists in our system, a reset link has been generated.
+            For this demo, the link is shown below instead of being emailed.
+          </div>
+          {% endif %}
+
+          <form method="post" novalidate class="mb-3">
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+                required
+              >
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">
+                Request reset link
+              </button>
+            </div>
+          </form>
+
+          {% if reset_link %}
+          <div class="alert alert-info small" role="alert">
+            <strong>Development only:</strong> click this link to reset your password:<br>
+            <a href="{{ reset_link }}">{{ reset_link }}</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

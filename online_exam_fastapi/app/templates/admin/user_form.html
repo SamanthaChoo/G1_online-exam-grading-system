@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+  }
+  .form-check-input:not(:checked) {
+    background-color: #dc3545;
+    border-color: #dc3545;
+  }
+  .form-check-input:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  }
+  .form-check-input:checked:focus {
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+  }
+  .form-check-input:not(:checked):focus {
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+  }
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const toggle = document.getElementById('is_active');
+    const statusText = document.getElementById('active-status-text');
+    const statusDesc = statusText.nextElementSibling;
+    
+    toggle.addEventListener('change', function() {
+      if (this.checked) {
+        statusText.textContent = 'Active';
+        statusText.className = 'fw-semibold text-success';
+        statusDesc.textContent = 'User can log in and access the system';
+      } else {
+        statusText.textContent = 'Suspended';
+        statusText.className = 'fw-semibold text-danger';
+        statusDesc.textContent = 'User account is suspended and cannot log in';
+      }
+    });
+  });
+</script>
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h5 mb-3">Edit User</h1>
+
+          {% if errors %}
+          <div class="alert alert-danger" role="alert">
+            <ul class="mb-0">
+              {% for field, message in errors.items() %}
+              <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% if form.role == 'lecturer' %}
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label for="title" class="form-label">Title</label>
+                <select id="title" name="title" class="form-select {% if errors.title %}is-invalid{% endif %}">
+                  <option value="">None</option>
+                  <option value="Dr." {% if form.title == 'Dr.' %}selected{% endif %}>Dr.</option>
+                  <option value="Prof." {% if form.title == 'Prof.' %}selected{% endif %}>Prof.</option>
+                  <option value="Assoc. Prof." {% if form.title == 'Assoc. Prof.' %}selected{% endif %}>Assoc. Prof.</option>
+                  <option value="Mr." {% if form.title == 'Mr.' %}selected{% endif %}>Mr.</option>
+                  <option value="Ms." {% if form.title == 'Ms.' %}selected{% endif %}>Ms.</option>
+                  <option value="Mrs." {% if form.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
+                  <option value="Ir." {% if form.title == 'Ir.' %}selected{% endif %}>Ir.</option>
+                  <option value="Ts." {% if form.title == 'Ts.' %}selected{% endif %}>Ts.</option>
+                </select>
+                {% if errors.title %}
+                <div class="invalid-feedback">{{ errors.title }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-9 mb-3">
+                <label for="name" class="form-label">Full Name</label>
+                <input
+                  type="text"
+                  class="form-control {% if errors.name %}is-invalid{% endif %}"
+                  id="name"
+                  name="name"
+                  value="{{ form.name }}"
+                >
+                {% if errors.name %}
+                <div class="invalid-feedback">{{ errors.name }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="staff_id" class="form-label">Staff ID</label>
+              <input
+                type="text"
+                class="form-control {% if errors.staff_id %}is-invalid{% endif %}"
+                id="staff_id"
+                name="staff_id"
+                value="{{ form.staff_id }}"
+              >
+              {% if errors.staff_id %}
+              <div class="invalid-feedback">{{ errors.staff_id }}</div>
+              {% endif %}
+            </div>
+            {% else %}
+            <div class="mb-3">
+              <label for="name" class="form-label">Name</label>
+              <input
+                type="text"
+                class="form-control {% if errors.name %}is-invalid{% endif %}"
+                id="name"
+                name="name"
+                value="{{ form.name }}"
+              >
+              {% if errors.name %}
+              <div class="invalid-feedback">{{ errors.name }}</div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input
+                type="email"
+                class="form-control {% if errors.email %}is-invalid{% endif %}"
+                id="email"
+                name="email"
+                value="{{ form.email }}"
+              >
+              {% if errors.email %}
+              <div class="invalid-feedback">{{ errors.email }}</div>
+              {% endif %}
+            </div>
+
+            {% if form.role == 'lecturer' %}
+            <div class="mb-3">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input
+                type="tel"
+                class="form-control {% if errors.phone %}is-invalid{% endif %}"
+                id="phone"
+                name="phone"
+                value="{{ form.phone }}"
+              >
+              {% if errors.phone %}
+              <div class="invalid-feedback">{{ errors.phone }}</div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label for="role" class="form-label">Role</label>
+              <select
+                id="role"
+                name="role"
+                class="form-select {% if errors.role %}is-invalid{% endif %}"
+              >
+                <option value="admin" {% if form.role == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="lecturer" {% if form.role == 'lecturer' %}selected{% endif %}>Lecturer</option>
+                <option value="student" {% if form.role == 'student' %}selected{% endif %}>Student</option>
+              </select>
+              {% if errors.role %}
+              <div class="invalid-feedback">{{ errors.role }}</div>
+              {% endif %}
+            </div>
+
+            {% if form.role == 'lecturer' %}
+            <div class="mb-3">
+              <label for="status" class="form-label">Status</label>
+              <select id="status" name="status_field" class="form-select {% if errors.status %}is-invalid{% endif %}">
+                <option value="active" {% if form.status == 'active' %}selected{% endif %}>Active</option>
+                <option value="suspended" {% if form.status == 'suspended' %}selected{% endif %}>Suspended</option>
+              </select>
+              {% if errors.status %}
+              <div class="invalid-feedback">{{ errors.status }}</div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label d-block">Account Status</label>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="is_active"
+                  name="is_active"
+                  value="true"
+                  {% if form.is_active %}checked{% endif %}
+                  style="width: 3rem; height: 1.5rem; cursor: pointer;"
+                >
+                <label class="form-check-label ms-3" for="is_active" style="cursor: pointer;">
+                  <span class="fw-semibold {% if form.is_active %}text-success{% else %}text-danger{% endif %}" id="active-status-text">
+                    {% if form.is_active %}Active{% else %}Suspended{% endif %}
+                  </span>
+                  <small class="text-muted d-block mt-1">
+                    {% if form.is_active %}
+                      User can log in and access the system
+                    {% else %}
+                      User account is suspended and cannot log in
+                    {% endif %}
+                  </small>
+                </label>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <a href="/admin/users" class="btn btn-outline-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

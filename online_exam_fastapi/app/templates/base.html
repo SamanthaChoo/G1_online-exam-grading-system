@@ -28,6 +28,26 @@
 
   <!-- Main CSS File -->
   <link href="/static/myschool/assets/css/main.css" rel="stylesheet">
+
+  <style>
+    /* Small, scoped tweaks to sit on top of the MySchool theme */
+    .auth-card {
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: 1rem;
+    }
+    .header-user-dropdown .dropdown-toggle,
+    .header-auth-btn {
+      border-radius: 999px;
+      padding-inline: 1.1rem;
+      font-size: 0.9rem;
+    }
+    .hero-cta-btn {
+      border-radius: 999px;
+      padding-inline: 1.75rem;
+      font-weight: 500;
+    }
+  </style>
 </head>
 
 <body class="index-page">
@@ -37,17 +57,43 @@
     <div
       class="header-container container-fluid container-xl position-relative d-flex align-items-center justify-content-end">
 
-      <a href="/courses/" class="logo d-flex align-items-center me-auto">
+      <a href="/" class="logo d-flex align-items-center me-auto">
         <h1 class="sitename">Online Exam</h1>
       </a>
 
       <nav id="navmenu" class="navmenu">
         <ul>
-          <li><a href="/courses/" class="active">Courses</a></li>
+          {% if current_user and (current_user.role == "lecturer" or current_user.role == "admin") %}
+          <li><a href="/courses/">Courses</a></li>
           <li><a href="/exams/new">New Exam</a></li>
+          {% endif %}
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
+
+      <div class="d-flex align-items-center gap-2 ms-3 header-user-dropdown">
+        {% if current_user %}
+          <div class="dropdown">
+            <button class="btn btn-outline-primary btn-sm header-auth-btn dropdown-toggle" type="button" id="userMenu"
+              data-bs-toggle="dropdown" aria-expanded="false">
+              {{ current_user.name }} ({{ current_user.role|capitalize }})
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+              <li><a class="dropdown-item" href="/courses/">My Courses</a></li>
+              {% if current_user.role == "admin" %}
+              <li><a class="dropdown-item" href="/admin/users">User Management</a></li>
+              {% endif %}
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item" href="/auth/logout">Logout</a></li>
+            </ul>
+          </div>
+        {% else %}
+          <a href="/auth/login" class="btn btn-outline-primary btn-sm header-auth-btn">Login</a>
+          <a href="/auth/register-student" class="btn btn-primary btn-sm header-auth-btn">Student Register</a>
+        {% endif %}
+      </div>
 
     </div>
   </header>
@@ -77,6 +123,7 @@
           <ul>
             <li><a href="/courses/">Courses</a></li>
             <li><a href="/exams/new">New Exam</a></li>
+            <li><a href="/auth/login">Login</a></li>
           </ul>
         </div>
 

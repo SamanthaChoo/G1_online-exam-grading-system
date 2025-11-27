@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlmodel==0.0.27
+SQLAlchemy==2.0.44
+jinja2
+python-multipart
+passlib[bcrypt]
+bcrypt<4.0.0
+itsdangerous
+
+

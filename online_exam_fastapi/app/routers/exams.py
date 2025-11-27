@@ -9,7 +9,8 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
 from app.database import get_session
-from app.models import Course, Exam
+from app.deps import get_current_user, require_role
+from app.models import Course, Exam, User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -33,6 +34,7 @@ def new_exam_form(
     request: Request,
     course_id: Optional[int] = Query(None),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     courses = session.exec(select(Course).order_by(Course.name)).all()
     context = {
@@ -45,6 +47,7 @@ def new_exam_form(
         "selected_course_id": None,
         "mode": "create",
         "status_options": STATUS_OPTIONS,
+        "current_user": current_user,
     }
     return templates.TemplateResponse("exams/form.html", context)
 
@@ -61,6 +64,7 @@ def create_exam(
     instructions: Optional[str] = Form(None),
     status: str = Form("draft"),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     errors: dict[str, str] = {}
 
@@ -147,6 +151,7 @@ def create_exam(
             "selected_course_id": int(course_id) if course_id else None,
             "mode": "create",
             "status_options": STATUS_OPTIONS,
+            "current_user": current_user,
         }
         return templates.TemplateResponse(
             "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
@@ -179,6 +184,7 @@ def exams_for_course(
     sort: Optional[str] = Query("start"),
     direction: Optional[str] = Query("asc"),
     session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_current_user),
 ):
     """List all exams associated with a specific course, with optional sorting."""
     course = session.get(Course, course_id)
@@ -211,24 +217,36 @@ def exams_for_course(
         "sort": sort,
         "direction": "desc" if is_desc else "asc",
         "has_sort": has_sort,
+        "current_user": current_user,
     }
     return templates.TemplateResponse("exams/list_by_course.html", context)
 
 
 @router.get("/{exam_id}")
-def exam_detail(exam_id: int, request: Request, session: Session = Depends(get_session)):
+def exam_detail(
+    exam_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_current_user),
+):
     exam = _get_exam(exam_id, session)
     course = session.get(Course, exam.course_id) if exam.course_id else None
     context = {
         "request": request,
         "exam": exam,
         "course": course,
+        "current_user": current_user,
     }
     return templates.TemplateResponse("exams/detail.html", context)
 
 
 @router.get("/{exam_id}/edit")
-def edit_exam_form(exam_id: int, request: Request, session: Session = Depends(get_session)):
+def edit_exam_form(
+    exam_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     exam = _get_exam(exam_id, session)
     courses = session.exec(select(Course).order_by(Course.name)).all()
     context = {
@@ -240,6 +258,7 @@ def edit_exam_form(exam_id: int, request: Request, session: Session = Depends(ge
         "selected_course_id": exam.course_id,
         "mode": "edit",
         "status_options": STATUS_OPTIONS,
+        "current_user": current_user,
     }
     return templates.TemplateResponse("exams/form.html", context)
 
@@ -257,6 +276,7 @@ def update_exam(
     instructions: Optional[str] = Form(None),
     status: str = Form("draft"),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     exam = _get_exam(exam_id, session)
 
@@ -340,6 +360,7 @@ def update_exam(
             "selected_course_id": int(course_id) if course_id else None,
             "mode": "edit",
             "status_options": STATUS_OPTIONS,
+            "current_user": current_user,
         }
         return templates.TemplateResponse(
             "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST

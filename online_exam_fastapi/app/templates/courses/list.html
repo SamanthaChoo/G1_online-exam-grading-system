@@ -72,11 +72,25 @@
                 {% endif %}
               </a>
             </th>
+            <th scope="col">Lecturers</th>
             <th scope="col">
               <a href="?sort=created&direction={% if sort == 'created' and direction == 'asc' %}desc{% else %}asc{% endif %}"
                  class="text-decoration-none text-dark">
                 Created
                 {% if sort == 'created' %}
+                  {% if direction == 'asc' %}
+                  <i class="bi bi-arrow-up-short"></i>
+                  {% else %}
+                  <i class="bi bi-arrow-down-short"></i>
+                  {% endif %}
+                {% endif %}
+              </a>
+            </th>
+            <th scope="col" class="text-center">
+              <a href="?sort=students&direction={% if sort == 'students' and direction == 'asc' %}desc{% else %}asc{% endif %}"
+                 class="text-decoration-none text-dark">
+                # Students
+                {% if sort == 'students' %}
                   {% if direction == 'asc' %}
                   <i class="bi bi-arrow-up-short"></i>
                   {% else %}
@@ -106,7 +120,17 @@
           <tr>
             <td class="fw-semibold">{{ course.code }}</td>
             <td>{{ course.name }}</td>
+            <td>
+              {% if course_lecturers.get(course.id) %}
+                {% for lecturer in course_lecturers[course.id] %}
+                  <span class="badge bg-info-subtle text-info me-1">{{ lecturer.name }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="text-muted small">No lecturers assigned</span>
+              {% endif %}
+            </td>
             <td>{{ course.created_at.strftime("%d %b %Y") }}</td>
+            <td class="text-center">{{ enrollment_counts.get(course.id, 0) }}</td>
             <td class="text-center">{{ exam_counts.get(course.id, 0) }}</td>
             <td class="text-center course-actions">
               <a class="btn btn-sm btn-outline-secondary me-1" href="/courses/{{ course.id }}/enroll">

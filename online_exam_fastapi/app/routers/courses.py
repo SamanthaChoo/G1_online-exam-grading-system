@@ -9,7 +9,8 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.database import get_session
-from app.models import Course, Enrollment, Exam, Student
+from app.deps import get_current_user, require_role
+from app.models import Course, CourseLecturer, Enrollment, Exam, Student, User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -21,18 +22,35 @@ def list_courses(
     sort: Optional[str] = Query("created"),
     direction: Optional[str] = Query("desc"),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     """List courses with optional sorting by column."""
     courses = session.exec(select(Course)).all()
     exam_counts = dict(
         session.exec(select(Exam.course_id, func.count(Exam.id)).group_by(Exam.course_id)).all()
     )
+    
+    # Get enrollment counts for each course
+    enrollment_counts = dict(
+        session.exec(select(Enrollment.course_id, func.count(Enrollment.id)).group_by(Enrollment.course_id)).all()
+    )
+
+    # Get lecturer assignments for each course
+    course_lecturers_map = {}
+    course_lecturers = session.exec(select(CourseLecturer)).all()
+    for cl in course_lecturers:
+        if cl.course_id not in course_lecturers_map:
+            course_lecturers_map[cl.course_id] = []
+        lecturer = session.get(User, cl.lecturer_id)
+        if lecturer:
+            course_lecturers_map[cl.course_id].append(lecturer)
 
     key_map = {
         "code": lambda c: c.code or "",
         "name": lambda c: c.name or "",
         "created": lambda c: c.created_at,
         "exams": lambda c: exam_counts.get(c.id, 0),
+        "students": lambda c: enrollment_counts.get(c.id, 0),
     }
 
     sort_key = key_map.get(sort or "created", key_map["created"])
@@ -44,20 +62,35 @@ def list_courses(
         "request": request,
         "courses": courses_sorted,
         "exam_counts": exam_counts,
+        "enrollment_counts": enrollment_counts,
+        "course_lecturers": course_lecturers_map,
         "sort": sort,
         "direction": "desc" if is_desc else "asc",
         "has_sort": (sort not in (None, "", "created") or (direction or "desc").lower() != "desc"),
+        "current_user": current_user,
     }
     return templates.TemplateResponse("courses/list.html", context)
 
 
 @router.get("/new")
-def new_course_form(request: Request):
+def new_course_form(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
+    # Fetch all active lecturers
+    lecturers = session.exec(
+        select(User).where(User.role == "lecturer", User.is_active == True)
+    ).all()
+    
     context = {
         "request": request,
         "form": None,
         "errors": {},
         "is_edit": False,
+        "lecturers": lecturers,
+        "selected_lecturer_ids": [],
+        "current_user": current_user,
     }
     return templates.TemplateResponse("courses/form.html", context)
 
@@ -68,7 +101,9 @@ def create_course(
     code: str = Form(...),
     name: str = Form(...),
     description: Optional[str] = Form(None),
+    lecturer_ids: Optional[list[int]] = Form(None),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     code_clean = code.strip()
     name_clean = name.strip()
@@ -86,19 +121,56 @@ def create_course(
     ).first():
         errors["code"] = "This course code is already in use. Please choose another."
 
+    # Validate lecturer IDs if provided
+    lecturer_ids_list = []
+    if lecturer_ids:
+        if isinstance(lecturer_ids, list):
+            lecturer_ids_list = [int(lid) for lid in lecturer_ids if lid]
+        else:
+            lecturer_ids_list = [int(lecturer_ids)]
+        
+        # Verify all lecturer IDs are valid lecturers
+        valid_lecturers = session.exec(
+            select(User).where(
+                User.id.in_(lecturer_ids_list),
+                User.role == "lecturer",
+                User.is_active == True
+            )
+        ).all()
+        if len(valid_lecturers) != len(lecturer_ids_list):
+            errors["lecturers"] = "One or more selected lecturers are invalid."
+
     if errors:
+        # Fetch all lecturers for the form
+        lecturers = session.exec(
+            select(User).where(User.role == "lecturer", User.is_active == True)
+        ).all()
+        
         context = {
             "request": request,
             "form": {"code": code, "name": name, "description": description or ""},
             "errors": errors,
+            "lecturers": lecturers,
+            "selected_lecturer_ids": lecturer_ids_list,
+            "current_user": current_user,
         }
         return templates.TemplateResponse(
             "courses/form.html", context, status_code=status.HTTP_400_BAD_REQUEST
         )
 
+    # Create course
     course = Course(code=code_clean, name=name_clean, description=description)
     session.add(course)
     session.commit()
+    session.refresh(course)
+
+    # Assign lecturers
+    if lecturer_ids_list:
+        for lecturer_id in lecturer_ids_list:
+            course_lecturer = CourseLecturer(course_id=course.id, lecturer_id=lecturer_id)
+            session.add(course_lecturer)
+        session.commit()
+
     return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -115,16 +187,20 @@ def enroll_form(
     request: Request,
     q: Optional[str] = Query(None, description="Search students by name, email, or matric"),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     """Enrollment management view.
 
     - Left: currently enrolled students
     - Right: available students that are not yet enrolled (optionally filtered by search query)
+    
+    Note: Students are fetched from the Student database table, not from User table.
     """
     course = _get_course(course_id, session)
     enrollments = session.exec(select(Enrollment).where(Enrollment.course_id == course_id)).all()
     enrolled_ids = {enrollment.student_id for enrollment in enrollments}
 
+    # Fetch all students from the Student database table
     stmt = select(Student)
     if q:
         pattern = f"%{q.strip()}%"
@@ -147,6 +223,7 @@ def enroll_form(
         "available_students": available_students,
         "enrolled_ids": enrolled_ids,
         "enrolled_count": len(enrolled_ids),
+        "current_user": current_user,
     }
     return templates.TemplateResponse("courses/enroll.html", context)
 
@@ -156,6 +233,7 @@ def enroll_students(
     course_id: int,
     student_ids: Optional[List[int]] = Form(None),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     course = _get_course(course_id, session)
     selected_ids = set(map(int, student_ids)) if student_ids else set()
@@ -179,9 +257,26 @@ def enroll_students(
 
 
 @router.get("/{course_id}/edit")
-def edit_course_form(course_id: int, request: Request, session: Session = Depends(get_session)):
+def edit_course_form(
+    course_id: int, 
+    request: Request, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     """Show edit form for an existing course."""
     course = _get_course(course_id, session)
+    
+    # Get currently assigned lecturers
+    course_lecturers = session.exec(
+        select(CourseLecturer).where(CourseLecturer.course_id == course_id)
+    ).all()
+    selected_lecturer_ids = [cl.lecturer_id for cl in course_lecturers]
+    
+    # Fetch all active lecturers
+    lecturers = session.exec(
+        select(User).where(User.role == "lecturer", User.is_active == True)
+    ).all()
+    
     form = {
         "code": course.code,
         "name": course.name,
@@ -193,6 +288,9 @@ def edit_course_form(course_id: int, request: Request, session: Session = Depend
         "errors": {},
         "is_edit": True,
         "course_id": course_id,
+        "lecturers": lecturers,
+        "selected_lecturer_ids": selected_lecturer_ids,
+        "current_user": current_user,
     }
     return templates.TemplateResponse("courses/form.html", context)
 
@@ -204,7 +302,9 @@ def update_course(
     code: str = Form(...),
     name: str = Form(...),
     description: Optional[str] = Form(None),
+    lecturer_ids: Optional[list[int]] = Form(None),
     session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     course = _get_course(course_id, session)
 
@@ -225,22 +325,74 @@ def update_course(
         if existing:
             errors["code"] = "This course code is already used by another course."
 
+    # Validate lecturer IDs if provided
+    lecturer_ids_list = []
+    if lecturer_ids:
+        if isinstance(lecturer_ids, list):
+            lecturer_ids_list = [int(lid) for lid in lecturer_ids if lid]
+        else:
+            lecturer_ids_list = [int(lecturer_ids)]
+        
+        # Verify all lecturer IDs are valid lecturers
+        valid_lecturers = session.exec(
+            select(User).where(
+                User.id.in_(lecturer_ids_list),
+                User.role == "lecturer",
+                User.is_active == True
+            )
+        ).all()
+        if len(valid_lecturers) != len(lecturer_ids_list):
+            errors["lecturers"] = "One or more selected lecturers are invalid."
+
     if errors:
+        # Fetch all lecturers for the form
+        lecturers = session.exec(
+            select(User).where(User.role == "lecturer", User.is_active == True)
+        ).all()
+        
+        # Get currently assigned lecturers
+        course_lecturers = session.exec(
+            select(CourseLecturer).where(CourseLecturer.course_id == course_id)
+        ).all()
+        current_lecturer_ids = [cl.lecturer_id for cl in course_lecturers]
+        
         context = {
             "request": request,
             "form": {"code": code, "name": name, "description": description or ""},
             "errors": errors,
             "is_edit": True,
             "course_id": course_id,
+            "lecturers": lecturers,
+            "selected_lecturer_ids": lecturer_ids_list if lecturer_ids_list else current_lecturer_ids,
+            "current_user": current_user,
         }
         return templates.TemplateResponse(
             "courses/form.html", context, status_code=status.HTTP_400_BAD_REQUEST
         )
 
+    # Update course
     course.code = code_clean
     course.name = name_clean
     course.description = description
     session.add(course)
+
+    # Update lecturer assignments
+    existing_assignments = session.exec(
+        select(CourseLecturer).where(CourseLecturer.course_id == course_id)
+    ).all()
+    existing_lecturer_ids = {cl.lecturer_id for cl in existing_assignments}
+    new_lecturer_ids = set(lecturer_ids_list)
+
+    # Remove unassigned lecturers
+    for assignment in existing_assignments:
+        if assignment.lecturer_id not in new_lecturer_ids:
+            session.delete(assignment)
+
+    # Add new lecturer assignments
+    for lecturer_id in new_lecturer_ids - existing_lecturer_ids:
+        course_lecturer = CourseLecturer(course_id=course.id, lecturer_id=lecturer_id)
+        session.add(course_lecturer)
+
     session.commit()
 
     return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)

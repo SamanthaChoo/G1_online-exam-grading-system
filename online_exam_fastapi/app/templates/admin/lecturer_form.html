@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Create New Lecturer</h2>
+            </div>
+            <div class="card-body">
+                {% if errors %}
+                <div class="alert alert-danger d-flex align-items-start">
+                    <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">There were problems creating the lecturer account.</h6>
+                        <ul class="mb-0 small">
+                            {% for field, message in errors.items() %}
+                            <li>{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+                <form method="post" novalidate>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Title <span class="text-muted small">(Optional)</span></label>
+                            <select name="title" class="form-select {% if errors.title %}is-invalid{% endif %}">
+                                <option value="">Select Title</option>
+                                <option value="Dr." {% if form and form.title == 'Dr.' %}selected{% endif %}>Dr.</option>
+                                <option value="Prof." {% if form and form.title == 'Prof.' %}selected{% endif %}>Prof.</option>
+                                <option value="Assoc. Prof." {% if form and form.title == 'Assoc. Prof.' %}selected{% endif %}>Assoc. Prof.</option>
+                                <option value="Mr." {% if form and form.title == 'Mr.' %}selected{% endif %}>Mr.</option>
+                                <option value="Ms." {% if form and form.title == 'Ms.' %}selected{% endif %}>Ms.</option>
+                                <option value="Mrs." {% if form and form.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
+                                <option value="Ir." {% if form and form.title == 'Ir.' %}selected{% endif %}>Ir.</option>
+                                <option value="Ts." {% if form and form.title == 'Ts.' %}selected{% endif %}>Ts.</option>
+                            </select>
+                            {% if errors.title %}
+                            <div class="invalid-feedback">
+                                {{ errors.title }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9 mb-3">
+                            <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name"
+                                   class="form-control {% if errors.name %}is-invalid{% endif %}"
+                                   placeholder="e.g. John Smith"
+                                   value="{{ form.name if form else '' }}" required>
+                            {% if errors.name %}
+                            <div class="invalid-feedback">
+                                {{ errors.name }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Staff ID <span class="text-danger">*</span></label>
+                        <input type="text" name="staff_id"
+                               class="form-control {% if errors.staff_id %}is-invalid{% endif %}"
+                               placeholder="e.g. STF1023"
+                               value="{{ form.staff_id if form else '' }}" required>
+                        {% if errors.staff_id %}
+                        <div class="invalid-feedback">
+                            {{ errors.staff_id }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Unique employee/staff identifier for this lecturer.
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" name="email"
+                               class="form-control {% if errors.email %}is-invalid{% endif %}"
+                               placeholder="e.g. john.smith@university.edu"
+                               value="{{ form.email if form else '' }}" required>
+                        {% if errors.email %}
+                        <div class="invalid-feedback">
+                            {{ errors.email }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Institutional email address used for login.
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number <span class="text-muted small">(Optional)</span></label>
+                        <input type="tel" name="phone"
+                               class="form-control {% if errors.phone %}is-invalid{% endif %}"
+                               placeholder="e.g. 012-3456789"
+                               value="{{ form.phone if form else '' }}">
+                        {% if errors.phone %}
+                        <div class="invalid-feedback">
+                            {{ errors.phone }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Temporary Password <span class="text-danger">*</span></label>
+                        <input type="password" name="password"
+                               class="form-control {% if errors.password %}is-invalid{% endif %}"
+                               placeholder="Minimum 8 characters" required>
+                        {% if errors.password %}
+                        <div class="invalid-feedback">
+                            {{ errors.password }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            The lecturer will use this password to log in. They should change it after first login.
+                        </small>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="/admin/users" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Create Lecturer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

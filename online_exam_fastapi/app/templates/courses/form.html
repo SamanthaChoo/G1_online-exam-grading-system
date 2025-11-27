@@ -57,6 +57,28 @@
                         <textarea name="description" class="form-control" rows="4"
                                   placeholder="Optional course description">{{ form.description if form else '' }}</textarea>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assign Lecturers <span class="text-muted small">(Optional - select multiple)</span></label>
+                        <select name="lecturer_ids" class="form-select" multiple size="5">
+                            {% for lecturer in lecturers %}
+                            <option value="{{ lecturer.id }}" 
+                                    {% if lecturer.id in selected_lecturer_ids %}selected{% endif %}>
+                                {{ lecturer.name }} ({{ lecturer.email }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if errors.lecturers %}
+                        <div class="invalid-feedback d-block">
+                            {{ errors.lecturers }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Hold Ctrl (Windows) or Cmd (Mac) to select multiple lecturers. 
+                            {% if not lecturers %}
+                            <strong>No lecturers available. Please create lecturer accounts from the Admin panel first.</strong>
+                            {% endif %}
+                        </small>
+                    </div>
                     <div class="d-flex justify-content-between">
                         <a href="/courses/" class="btn btn-outline-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">
