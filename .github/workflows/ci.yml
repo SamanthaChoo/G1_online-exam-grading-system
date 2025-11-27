@@ -49,11 +49,12 @@ jobs:
           python -m flake8 online_exam_fastapi/app --config .flake8 || exit 1
 
       - name: Run tests (pytest)
-        # Run unit tests in the `online_exam_fastapi` package to match local dev setup
+        # Run unit tests in the `online_exam_fastapi` package and emit JUnit XML
         run: |
           echo "Running pytest in online_exam_fastapi..."
           cd online_exam_fastapi
-          pytest -q --maxfail=1 || exit 1
+          mkdir -p test-results
+          pytest -q --maxfail=1 --junitxml=test-results/results-${{ matrix.python-version }}.xml || exit 1
 
       - name: Upload test results (if any)
         if: always()
@@ -61,7 +62,5 @@ jobs:
         with:
           name: pytest-output-${{ matrix.python-version }}
           path: |
-            test-results || |
-            .pytest_cache || |
-            # no-op if none
-            |
+            online_exam_fastapi/test-results/**
+            online_exam_fastapi/.pytest_cache/**
