@@ -41,11 +41,15 @@ def create_test_engine(database_url: str = "sqlite:///:memory:"):
     Call `set_engine` with the returned engine so the app uses it during tests.
     """
     from sqlmodel import create_engine as _create_engine
+    # Use StaticPool so an in-memory SQLite database remains accessible
+    # across multiple connections/threads (TestClient + app threads).
+    from sqlalchemy.pool import StaticPool
 
     return _create_engine(
         database_url,
         echo=False,
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
 
 
@@ -63,5 +67,8 @@ def reset_db():
 
     Use in tests to ensure a clean schema state.
     """
+    # Ensure models are imported so metadata is populated
+    from app.models import Exam, MCQQuestion, StudentAnswer, ExamResult  # noqa: F401
+
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
