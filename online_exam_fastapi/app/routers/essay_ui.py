@@ -5,6 +5,7 @@ from app.services.essay_service import (
     grade_attempt,
     start_attempt,
     submit_answers,
+    timeout_attempt,
 )
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
@@ -107,9 +108,12 @@ def start_submit(
     exam_id: int, student_id: int = Form(...), session: Session = Depends(get_session)
 ):
     attempt = start_attempt(session, exam_id, student_id)
-    return RedirectResponse(
-        url=f"/essay/{exam_id}/attempt/{attempt.id}", status_code=303
-    )
+    # If the returned attempt is not in-progress it means the student already
+    # has a final attempt (submitted/timed_out). Redirect to attempts list.
+    if attempt and attempt.status != "in_progress":
+        return RedirectResponse(url=f"/essay/{exam_id}/attempts?already=true", status_code=303)
+
+    return RedirectResponse(url=f"/essay/{exam_id}/attempt/{attempt.id}", status_code=303)
 
 
 @router.get("/essay/{exam_id}/attempt/{attempt_id}")
@@ -166,6 +170,34 @@ async def attempt_submit(
         submit_answers(session, exam_id, student_id, answers)
 
     return RedirectResponse(url=f"/essay/{exam_id}/attempts", status_code=303)
+
+
+@router.post("/essay/{exam_id}/attempt/{attempt_id}/timeout")
+async def attempt_timeout(
+    exam_id: int,
+    attempt_id: int,
+    session: Session = Depends(get_session),
+    request: Request = None,
+):
+    # Accept JSON body with answers; fall back to empty dict
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    answers = payload.get("answers") or {}
+
+    # find student_id from attempt record
+    attempt = session.get(ExamAttempt, attempt_id)
+    student_id = attempt.student_id if attempt else None
+
+    if student_id is not None:
+        # timeout_attempt will record answers and mark attempt timed out
+        timed = timeout_attempt(session, exam_id, student_id, answers)
+        if not timed:
+            return RedirectResponse(url=f"/essay/{exam_id}/attempts", status_code=303)
+
+    return RedirectResponse(url=f"/essay/{exam_id}/attempt/{attempt_id}", status_code=303)
 
 
 @router.get("/essay/{exam_id}/grade/{attempt_id}")

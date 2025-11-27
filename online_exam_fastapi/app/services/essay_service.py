@@ -50,6 +50,17 @@ def start_attempt(session: Session, exam_id: int, student_id: int) -> ExamAttemp
     if attempt:
         return attempt
 
+    # If there's already a final attempt (submitted/timed_out), do not create a new one.
+    stmt_final = select(ExamAttempt).where(
+        (ExamAttempt.exam_id == exam_id)
+        & (ExamAttempt.student_id == student_id)
+        & (ExamAttempt.is_final == 1)
+    )
+    final_attempt = session.exec(stmt_final).first()
+    if final_attempt:
+        # Return the existing final attempt — caller should handle redirect/notice.
+        return final_attempt
+
     # Create a new attempt
     attempt = ExamAttempt(
         exam_id=exam_id,

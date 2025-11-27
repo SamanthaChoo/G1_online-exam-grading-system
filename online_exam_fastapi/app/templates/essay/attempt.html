@@ -5,7 +5,7 @@
   <div class="mb-3">
     <strong>Time left:</strong> <span id="countdown">--:--</span>
   </div>
-  <form id="attempt-form" method="post" action="/exam/{{ exam.id }}/submit?student_id={{ attempt.student_id }}">
+  <form id="attempt-form" method="post" action="/essay/{{ exam.id }}/attempt/{{ attempt.id }}/submit">
     {% for q in questions %}
       <div class="mb-3">
         <label class="form-label">Q{{ loop.index }}: {{ q.question_text }}</label>
@@ -92,7 +92,7 @@
 
         const payload = { answers: collectAnswers() };
         try{
-          await fetch(`/exam/${examId}/timeout?student_id=${studentId}`, {
+          await fetch(`/essay/${examId}/attempt/${attemptId}/timeout?student_id=${studentId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -107,6 +107,5 @@
 
     })();
   </script>
-  </form>
 </div>
 {% endblock %}

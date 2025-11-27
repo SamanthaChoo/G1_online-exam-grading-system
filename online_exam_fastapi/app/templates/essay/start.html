@@ -10,4 +10,17 @@
     <button class="btn btn-primary">Start Attempt</button>
   </form>
 </div>
+<script>
+  // If the server redirected to this page with ?already=true, show an alert
+  (function(){
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('already') === 'true') {
+        alert('An attempt already exists for this student (same student ID). You cannot start another attempt.');
+      }
+    } catch (e) {
+      // ignore
+    }
+  })();
+</script>
 {% endblock %}
