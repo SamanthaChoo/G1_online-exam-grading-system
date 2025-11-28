@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <h2>Auto-Submitted</h2>
+  <div class="alert alert-warning">Your answers were automatically submitted because the time expired.</div>
+  <p>You can review your attempt below.</p>
+  <a class="btn btn-primary" href="/essay/{{ exam.id }}/attempts">Back to attempts</a>
+</div>
+{% endblock %}

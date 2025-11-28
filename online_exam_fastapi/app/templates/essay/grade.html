@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="h4 mb-0">Grade Attempt #{{ attempt.id }} — {{ exam.title }}</h2>
+      <small class="text-muted">Student: {{ student.name if student else ('ID ' ~ attempt.student_id) }} &nbsp; Status: {{ attempt.status }}</small>
+    </div>
+    {% if attempt and attempt.started_at and attempt.status != 'submitted' %}
+      <div>
+        <strong>Time left:</strong> <span id="grade-countdown">--:--</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <form method="post">
+    {% set total_possible = 0 %}
+    {% set total_current = 0 %}
+    {% for q in questions %}
+      {% set total_possible = total_possible + (q.max_marks or 0) %}
+      {% set current_marks = (answers_map.get(q.id).marks_awarded if answers_map.get(q.id) and answers_map.get(q.id).marks_awarded is not none else 0) %}
+      {% set total_current = total_current + current_marks %}
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <label class="form-label"><strong>Q{{ loop.index }}:</strong> {{ q.question_text }}</label>
+              <p class="small text-muted">Answer: {{ answers_map.get(q.id).answer_text if answers_map.get(q.id) }}</p>
+            </div>
+            <div style="min-width:180px; text-align:right;">
+              <div class="mb-2 small text-muted">Max: {{ q.max_marks or 0 }}</div>
+              <input type="number" min="0" max="{{ q.max_marks or 0 }}" name="score_{{ q.id }}" class="form-control" value="{{ current_marks }}" />
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div><strong>Current total:</strong> {{ total_current }} / {{ total_possible }}</div>
+      <button class="btn btn-lg btn-primary">Save Scores</button>
+    </div>
+  </form>
+
+  {% if attempt and attempt.started_at and attempt.status != 'submitted' %}
+  <script>
+    (function(){
+      // Show countdown if attempt still in progress
+      const startedAt = new Date("{{ attempt.started_at.isoformat() }}");
+      const durationMinutes = {{ exam.duration_minutes or 0 }};
+      const endTime = new Date(startedAt.getTime() + durationMinutes*60000);
+      const el = document.getElementById('grade-countdown');
+      if(!el) return;
+      function update(){
+        const now = new Date();
+        let diff = Math.max(0, Math.floor((endTime - now)/1000));
+        const mins = Math.floor(diff/60).toString().padStart(2,'0');
+        const secs = (diff%60).toString().padStart(2,'0');
+        el.textContent = mins + ':' + secs;
+        if(diff<=0){ clearInterval(t); el.textContent = '00:00'; }
+      }
+      update();
+      const t = setInterval(update,1000);
+    })();
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

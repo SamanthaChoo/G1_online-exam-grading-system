@@ -24,12 +24,12 @@ class Student(SQLModel, table=True):
     # Sprint 2: optional link to a user account (when the student registers)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Optional basic info
     program: Optional[str] = None  # e.g., "SWE", "BIM"
     year_of_study: Optional[int] = None  # e.g., 1, 2, 3, 4
     phone_number: Optional[str] = None
-    
+
     # Future exam-related fields
     gpa: Optional[float] = None
 
@@ -68,7 +68,9 @@ class Exam(SQLModel, table=True):
 
 
 class Enrollment(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("course_id", "student_id", name="uq_course_student"),)
+    __table_args__ = (
+        UniqueConstraint("course_id", "student_id", name="uq_course_student"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     course_id: int = Field(foreign_key="course.id")
@@ -76,9 +78,46 @@ class Enrollment(SQLModel, table=True):
     enrolled_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+# --- Essay-based exam models (Sprint 1 implementation) ---
+
+
+class ExamQuestion(SQLModel, table=True):
+    """An essay question belonging to an exam."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exam.id")
+    question_text: str
+    max_marks: int
+
+
+class ExamAttempt(SQLModel, table=True):
+    """Tracks an attempt by a student for an exam."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exam.id")
+    student_id: int = Field(foreign_key="student.id")
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    submitted_at: Optional[datetime] = None
+    status: str = Field(default="in_progress")  # in_progress | submitted | timed_out
+    is_final: int = Field(default=0)  # 0/1
+
+
+class EssayAnswer(SQLModel, table=True):
+    """Answer to an essay question within an attempt."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: int = Field(foreign_key="examattempt.id")
+    question_id: int = Field(foreign_key="examquestion.id")
+    answer_text: Optional[str] = None
+    marks_awarded: Optional[int] = None
+
+
 class CourseLecturer(SQLModel, table=True):
     """Junction table for many-to-many relationship between Course and Lecturer (User with role='lecturer')."""
-    __table_args__ = (UniqueConstraint("course_id", "lecturer_id", name="uq_course_lecturer"),)
+
+    __table_args__ = (
+        UniqueConstraint("course_id", "lecturer_id", name="uq_course_lecturer"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     course_id: int = Field(foreign_key="course.id")
@@ -100,7 +139,7 @@ class User(SQLModel, table=True):
     student_id: Optional[int] = Field(default=None, foreign_key="student.id")
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Lecturer-specific fields
     title: Optional[str] = None  # Dr., Prof., Assoc. Prof., Mr., Ms., Mrs., Ir., Ts.
     staff_id: Optional[str] = None  # Unique staff/employee ID (for lecturers)
@@ -118,4 +157,3 @@ class PasswordResetToken(SQLModel, table=True):
     expires_at: datetime
     used: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-

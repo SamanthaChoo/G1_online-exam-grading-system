@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Grade Submission - {{ student.name }}{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 100px; min-height: 100vh;">
+  <div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+      <div class="col-lg-12">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h2>
+              <i class="bi bi-clipboard-check text-primary"></i>
+              Manual Grading
+            </h2>
+            <p class="text-muted mb-0">
+              Exam: {{ exam.title }} | Student: {{ student.name }} (ID: {{ student.id }})
+            </p>
+          </div>
+          <a href="/grading/{{ exam.id }}/submissions" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back to Submissions
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grading Form -->
+    <form method="POST" action="/grading/{{ exam.id }}/{{ student.id }}">
+      {% for item in grading_data %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              Question {{ loop.index }}
+              {% if item.is_graded %}
+              <span class="badge bg-success ms-2">
+                <i class="bi bi-check-circle me-1"></i>Graded
+              </span>
+              {% else %}
+              <span class="badge bg-warning ms-2">
+                <i class="bi bi-hourglass-half me-1"></i>Pending
+              </span>
+              {% endif %}
+            </h5>
+            <span class="badge bg-light text-primary">
+              Max: {{ item.question.max_marks }} marks
+            </span>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <!-- Question Text -->
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-question-circle me-2"></i>Question:
+            </h6>
+            <p class="lead">{{ item.question.question_text }}</p>
+          </div>
+
+          <!-- Student Answer -->
+          <div class="mb-4">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-file-earmark-text me-2"></i>Student's Answer:
+            </h6>
+            <div class="p-3 bg-light rounded">
+              <p class="mb-0" style="white-space: pre-wrap;">{{ item.answer_text }}</p>
+            </div>
+          </div>
+
+          <!-- Grading Inputs -->
+          <div class="row">
+            <!-- Marks Input -->
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="marks_{{ item.question.id }}" class="form-label">
+                  <i class="bi bi-award me-2"></i>Marks Awarded
+                </label>
+                <input 
+                  type="number" 
+                  class="form-control form-control-lg" 
+                  id="marks_{{ item.question.id }}" 
+                  name="marks_{{ item.question.id }}" 
+                  min="0" 
+                  max="{{ item.question.max_marks }}"
+                  value="{% if item.marks_awarded is not none %}{{ item.marks_awarded }}{% endif %}"
+                  placeholder="Enter marks (0 - {{ item.question.max_marks }})"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Comments Input -->
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="comments_{{ item.question.id }}" class="form-label">
+                  <i class="bi bi-chat-left-text me-2"></i>Grader Comments (Optional)
+                </label>
+                <textarea 
+                  class="form-control" 
+                  id="comments_{{ item.question.id }}" 
+                  name="comments_{{ item.question.id }}" 
+                  rows="3"
+                  placeholder="Add feedback for the student..."
+                >{% if item.grader_comments %}{{ item.grader_comments }}{% endif %}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Previous Grade Info -->
+          {% if item.is_graded %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Previously Graded:</strong> {{ item.marks_awarded }} marks awarded
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Submit Button -->
+      <div class="row mb-5">
+        <div class="col-lg-12">
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="bi bi-save me-2"></i>Save All Grades
+            </button>
+          </div>
+          <p class="text-center text-muted mt-3">
+            <i class="bi bi-info-circle me-1"></i>
+            All grades will be saved. You can update grades later if needed.
+          </p>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

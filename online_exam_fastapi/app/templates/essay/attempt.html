@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <div id="attempt-alert-placeholder"></div>
+  <h2>Attempt #{{ attempt.id }} for {{ exam.title }}</h2>
+  <div class="mb-3">
+    <strong>Time left:</strong> <span id="countdown">--:--</span>
+  </div>
+  <form id="attempt-form" method="post" action="/essay/{{ exam.id }}/attempt/{{ attempt.id }}/submit">
+    {% for q in questions %}
+      <div class="mb-3">
+        <label class="form-label">Q{{ loop.index }}: {{ q.question_text }}</label>
+        <textarea name="answer_{{ q.id }}" class="form-control" rows="4">{{ answers_map.get(q.id).answer_text if answers_map.get(q.id) }}</textarea>
+      </div>
+    {% endfor %}
+    <button id="submit-btn" class="btn btn-primary">Submit Answers</button>
+  </form>
+
+  <script>
+    (function(){
+      // Configuration from template (serialize safely to JS using tojson)
+      const attemptId = {{ attempt.id | default(None) | tojson }};
+      const examId = {{ exam.id | default(None) | tojson }};
+      // Default to 90 minutes if the exam has no duration set
+      const durationMinutes = {{ (exam.duration_minutes or 90) | tojson }};
+      const attemptsCount = {{ (attempts_count or 0) | tojson }};
+
+      // If this student already has more than one attempt, show a Bootstrap alert banner
+      if (attemptsCount > 1) {
+        const msg = `Note: this is attempt #${attemptsCount}. You have previous attempts recorded.`;
+        const placeholder = document.getElementById('attempt-alert-placeholder');
+        const alertHtml = `<div class="alert alert-warning" role="alert">${msg}</div>`;
+        if (placeholder) {
+          placeholder.innerHTML = alertHtml;
+        } else {
+          // Fallback: insert at top of container
+          const container = document.querySelector('.container');
+          if (container) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = alertHtml;
+            container.insertBefore(wrapper, container.firstChild);
+          } else {
+            try { alert(msg); } catch (e) { /* last-resort */ }
+          }
+        }
+      }
+      /* removed startedAtRaw (we use epoch ms below, which is JSON-safe) */
+
+      // One-time enforcement via localStorage key
+      const storageKey = 'attempt_submitted_' + attemptId;
+      // Server-side attempt status (used to avoid stale localStorage disabling fields)
+      const attemptStatus = {{ attempt.status | default(None) | tojson }};
+      const attemptIsFinal = {{ attempt.is_final | default(None) | tojson }};
+
+      const submitBtn = document.getElementById('submit-btn');
+      const form = document.getElementById('attempt-form');
+
+      function setFormReadOnly() {
+        const areas = form.querySelectorAll('textarea, input, button');
+        areas.forEach(el => el.setAttribute('disabled','disabled'));
+      }
+
+      // Authoritative server-side status: if the server says the attempt is not
+      // in_progress then disable the form. If the server still considers the
+      // attempt in_progress we ignore any stale localStorage flag to avoid
+      // incorrectly disabling fields left over from previous sessions.
+      if (attemptStatus !== 'in_progress') {
+        setFormReadOnly();
+        const countdown = document.getElementById('countdown');
+        if (countdown) {
+          if (attemptStatus === 'submitted') countdown.textContent = 'Submitted';
+          else if (attemptStatus === 'timed_out') countdown.textContent = 'Timed out';
+          else countdown.textContent = 'Submitted';
+        }
+      } else if (localStorage.getItem(storageKey)) {
+        // Server says in_progress but client has a local submitted flag — assume
+        // the local flag is stale and remove it so the user can continue.
+        try { localStorage.removeItem(storageKey); } catch (e) { /* ignore */ }
+      }
+
+      // Confirm before manual submit and disable to prevent double submits
+      form.addEventListener('submit', function(ev){
+        const ok = confirm('Are you sure you want to submit your answers? Once submitted you will not be able to edit them.');
+        if (!ok) {
+          ev.preventDefault();
+          return;
+        }
+        try { localStorage.setItem(storageKey, '1'); } catch (e) { /* ignore */ }
+        submitBtn.textContent = 'Submitting...';
+        submitBtn.setAttribute('disabled','disabled');
+      });
+
+      // Countdown + auto-submit on timeout
+      // Use epoch milliseconds from server (timezone-safe). If not provided, fall back to now.
+      const startedAtMs = {{ started_at_ms | default(None) | tojson }};
+      const startedAt = startedAtMs ? new Date(startedAtMs) : new Date();
+      const endTime = new Date(startedAt.getTime() + durationMinutes * 60000);
+
+      function updateCountdown(){
+        const now = new Date();
+        let diff = Math.max(0, Math.floor((endTime - now)/1000));
+        const mins = Math.floor(diff/60).toString().padStart(2,'0');
+        const secs = (diff%60).toString().padStart(2,'0');
+        const countdown = document.getElementById('countdown');
+        if (countdown) countdown.textContent = mins + ':' + secs;
+        if (diff <= 0){
+          // time's up — auto-submit
+          doAutoSubmit();
+          clearInterval(timer);
+        }
+      }
+
+      let timer = setInterval(updateCountdown, 1000);
+      updateCountdown();
+
+      function collectAnswers(){
+        const answers = [];
+        const areas = form.querySelectorAll('textarea[name^="answer_"]');
+        areas.forEach(a => {
+          const name = a.getAttribute('name');
+          const qid = parseInt(name.split('_')[1]);
+          answers.push({ question_id: qid, answer_text: a.value });
+        });
+        return answers;
+      }
+
+      async function doAutoSubmit(){
+        // prevent multiple auto-submits
+        if (localStorage.getItem(storageKey)) return;
+        localStorage.setItem(storageKey, '1');
+        setFormReadOnly();
+
+        const payload = { answers: collectAnswers() };
+        try{
+          await fetch(`/essay/${examId}/attempt/${attemptId}/timeout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          // Redirect to auto-submitted confirmation page after timeout
+          window.location.href = `/essay/${examId}/attempt/${attemptId}/auto_submitted`;
+        } catch(err){
+          // best-effort: still redirect
+          window.location.href = `/essay/${examId}/attempt/${attemptId}/auto_submitted`;
+        }
+      }
+
+    })();
+  </script>
+</div>
+{% endblock %}

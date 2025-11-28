@@ -66,6 +66,12 @@
           {% if current_user and (current_user.role == "lecturer" or current_user.role == "admin") %}
           <li><a href="/courses/">Courses</a></li>
           <li><a href="/exams/new">New Exam</a></li>
+          <li><a href="/essay">Essay</a></li>
+          <li><a href="/docs">API Docs</a></li>
+          {% else %}
+          <li><a href="/courses/">Courses</a></li>
+          <li><a href="/essay">Essay</a></li>
+          <li><a href="/docs">API Docs</a></li>
           {% endif %}
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
@@ -123,6 +129,8 @@
           <ul>
             <li><a href="/courses/">Courses</a></li>
             <li><a href="/exams/new">New Exam</a></li>
+            <li><a href="/essay">Essay</a></li>
+            <li><a href="/docs">API Docs</a></li>
             <li><a href="/auth/login">Login</a></li>
           </ul>
         </div>

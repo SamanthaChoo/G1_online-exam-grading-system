@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <h2>Questions for {{ exam.title }}</h2>
+  <a class="btn btn-primary mb-3" href="/essay/{{ exam.id }}/questions/new">Add Question</a>
+  <table class="table">
+    <thead><tr><th>#</th><th>Question</th><th>Max Marks</th></tr></thead>
+    <tbody>
+      {% for q in questions %}
+      <tr>
+        <td>{{ q.id }}</td>
+        <td>{{ q.question_text }}</td>
+        <td>{{ q.max_marks }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">No questions</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

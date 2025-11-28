@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  {% if current_user and current_user.role == 'student' %}
+    <h2>Results for {{ exam.title }}</h2>
+  {% else %}
+    <h2>Grade the Exam: {{ exam.title }}</h2>
+  {% endif %}
+  <div class="list-group">
+    {% for item in attempts_with_stats %}
+      {% set a = item.attempt %}
+      <div class="list-group-item mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-1">Student ID: {{ a.student_id }}</h5>
+            <small class="text-muted">Started: {{ a.started_at }} &nbsp; Submitted: {{ a.submitted_at or '—' }}</small>
+          </div>
+          <div class="text-end">
+            {% if not current_user or current_user.role != 'student' %}
+              <div><strong>Grading Progress:</strong></div>
+              <div class="small text-muted">{{ item.graded_count }} / {{ item.total_questions }} questions</div>
+              <div class="mt-2"><strong>Score:</strong> {{ item.score }} / {{ item.total_possible }}</div>
+              <div class="mt-2">
+                <a href="/essay/{{ exam.id }}/grade/{{ a.id }}" class="btn btn-sm btn-primary">Grade</a>
+              </div>
+            {% else %}
+              <!-- Student view: hide grading controls entirely -->
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-info">No attempts</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

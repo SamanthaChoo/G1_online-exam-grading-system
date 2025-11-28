@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Take Exam - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .timer-display {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 1000;
+    background: #fff;
+    padding: 15px 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .timer-warning {
+    background: #fff3cd !important;
+    border: 2px solid #ffc107;
+  }
+  .timer-danger {
+    background: #f8d7da !important;
+    border: 2px solid #dc3545;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  .question-card {
+    margin-bottom: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section" style="padding-top: 120px; min-height: 100vh;">
+  <!-- Timer Display (Fixed) -->
+  <div id="timer-display" class="timer-display">
+    <h4 class="mb-0">
+      <i class="bi bi-clock"></i>
+      Time Remaining: <span id="timer-text">{{ remaining_seconds // 60 }}:{{ '%02d' % (remaining_seconds % 60) }}</span>
+    </h4>
+  </div>
+
+  <div class="container">
+    <!-- Exam Header -->
+    <div class="row mb-4">
+      <div class="col-lg-12">
+        <div class="alert alert-info">
+          <h3 class="mb-2">{{ exam.title }}</h3>
+          <p class="mb-0">
+            <strong>Duration:</strong> {{ exam.duration_minutes }} minutes | 
+            <strong>Total Questions:</strong> {{ questions|length }}
+          </p>
+          <p class="mb-0 mt-2">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Important:</strong> Your exam will be automatically submitted when the timer expires.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Exam Form -->
+    <form id="exam-form" method="POST" action="/exam/{{ exam.id }}/submit">
+      <input type="hidden" name="student_id" value="{{ student_id }}">
+      
+      {% for question in questions %}
+      <div class="question-card">
+        <div class="card shadow-sm">
+          <div class="card-header text-white" style="background-color: #012970;">
+            <h5 class="mb-0">
+              Question {{ loop.index }} 
+              <span class="badge bg-light text-dark float-end">{{ question.max_marks }} marks</span>
+            </h5>
+          </div>
+          <div class="card-body">
+            <p class="lead mb-3">{{ question.question_text }}</p>
+            
+            <div class="mb-3">
+              <label for="answer_{{ question.id }}" class="form-label">
+                <i class="bi bi-pencil-square me-2"></i>Your Answer:
+              </label>
+              <textarea 
+                class="form-control" 
+                id="answer_{{ question.id }}" 
+                name="answer_{{ question.id }}" 
+                rows="10"
+                placeholder="Type your answer here..."
+                required
+              ></textarea>
+              <div class="form-text">
+                Write a detailed answer. Maximum marks: {{ question.max_marks }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Submit Button -->
+      <div class="row mb-5">
+        <div class="col-lg-12 text-center">
+          <button type="submit" class="btn btn-success btn-lg" id="submit-btn">
+            <i class="bi bi-check-circle me-2"></i>Submit Exam
+          </button>
+          <p class="text-muted mt-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Make sure to review your answers before submitting. You cannot edit after submission.
+          </p>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- Auto-Submit Modal -->
+<div class="modal fade" id="autoSubmitModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-clock-history me-2"></i>Time Expired
+        </h5>
+      </div>
+      <div class="modal-body text-center">
+        <i class="bi bi-hourglass-bottom" style="font-size: 3rem; color: #dc3545;"></i>
+        <h4 class="mt-3">Exam time has ended</h4>
+        <p>Your answers are being submitted automatically...</p>
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Submitting...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Countdown Timer Implementation
+// User Story 3: Auto Submit When Time Ends
+
+let remainingSeconds = parseInt('{{ remaining_seconds }}', 10);
+let timerInterval;
+let autoSubmitting = false;
+
+function updateTimerDisplay() {
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  const timerText = document.getElementById('timer-text');
+  const timerDisplay = document.getElementById('timer-display');
+  
+  timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  
+  // Change timer color based on remaining time
+  if (remainingSeconds <= 60) {
+    timerDisplay.classList.add('timer-danger');
+    timerDisplay.classList.remove('timer-warning');
+  } else if (remainingSeconds <= 300) {
+    timerDisplay.classList.add('timer-warning');
+    timerDisplay.classList.remove('timer-danger');
+  }
+}
+
+function autoSubmitExam() {
+  if (autoSubmitting) return;
+  autoSubmitting = true;
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('autoSubmitModal'));
+  modal.show();
+  
+  // Disable form submit button
+  document.getElementById('submit-btn').disabled = true;
+  
+  // Send auto-submit request
+  const formData = new FormData();
+  formData.append('student_id', '{{ student_id }}');
+  
+  fetch('/exam/{{ exam.id }}/auto-submit', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.status === 'success') {
+      // Redirect to auto-submitted page
+      setTimeout(() => {
+        window.location.href = data.redirect_url;
+      }, 2000);
+    }
+  })
+  .catch(error => {
+    console.error('Auto-submit error:', error);
+    alert('Error submitting exam. Please contact your instructor.');
+  });
+}
+
+function startTimer() {
+  updateTimerDisplay();
+  
+  timerInterval = setInterval(() => {
+    remainingSeconds--;
+    updateTimerDisplay();
+    
+    if (remainingSeconds <= 0) {
+      clearInterval(timerInterval);
+      autoSubmitExam();
+    }
+  }, 1000);
+}
+
+// Prevent accidental page refresh
+window.addEventListener('beforeunload', function(e) {
+  if (!autoSubmitting) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// Start timer on page load
+document.addEventListener('DOMContentLoaded', startTimer);
+</script>
+{% endblock %}
