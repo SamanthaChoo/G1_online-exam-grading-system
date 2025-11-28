@@ -1,5 +1,5 @@
 from app.database import get_session
-from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion, Student, User
+from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion, Student, User, Enrollment
 from app.services.essay_service import (
     add_question,
     grade_attempt,
@@ -7,7 +7,7 @@ from app.services.essay_service import (
     submit_answers,
     timeout_attempt,
 )
-from fastapi import APIRouter, Depends, Form, Request, Query
+from fastapi import APIRouter, Depends, Form, Request, Query, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -208,6 +208,22 @@ def start_submit(
     if student_id is None:
         # No linked student record - cannot start attempt
         return RedirectResponse(url=f"/essay/{exam_id}/start?no_student=true", status_code=303)
+
+    exam = session.get(Exam, exam_id)
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    if exam.course_id:
+        enrollment = session.exec(
+            select(Enrollment).where(
+                Enrollment.course_id == exam.course_id,
+                Enrollment.student_id == student_id,
+            )
+        ).first()
+        if enrollment is None:
+            raise HTTPException(
+                status_code=403, detail="You are not enrolled in this course."
+            )
 
     attempt = start_attempt(session, exam_id, student_id)
     # If the returned attempt is not in-progress it means the student already
