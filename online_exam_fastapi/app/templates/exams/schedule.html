@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Exam Schedule{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Exam Schedule for {{ student.name }} ({{ student.matric_no }})</h2>
+  <table class="table table-bordered table-hover mt-3">
+    <thead class="table-light">
+      <tr>
+        <th>Title</th>
+        <th>Subject</th>
+        <th>Date/Time</th>
+        <th>Duration (min)</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in exams %}
+      <tr>
+        <td>{{ item.exam.title }}</td>
+        <td>{{ item.exam.subject }}</td>
+        <td>{{ item.exam.start_time.strftime('%Y-%m-%d %H:%M') if item.exam.start_time else 'N/A' }}</td>
+        <td>{{ item.exam.duration_minutes }}</td>
+        <td>
+          {% if item.status == 'upcoming' %}
+            <span class="badge bg-secondary">Upcoming</span>
+          {% elif item.status == 'starting soon' %}
+            <span class="badge bg-warning text-dark">Starting Soon</span>
+          {% elif item.status == 'ongoing' %}
+            <span class="badge bg-success">Ongoing</span>
+          {% elif item.status == 'ended' %}
+            <span class="badge bg-danger">Ended</span>
+          {% else %}
+            <span class="badge bg-light text-dark">Unscheduled</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if item.status in ['starting soon', 'ongoing'] %}
+            <a href="/exams/{{ item.exam.id }}/start?student_id={{ student.id }}" class="btn btn-primary btn-sm">Start/Join</a>
+          {% else %}
+            <span class="text-muted">-</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

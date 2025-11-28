@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}MCQ List{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>MCQ Questions for {{ exam.title }}</h2>
+  <a href="/exams/{{ exam.id }}/mcq/new" class="btn btn-success mb-3">Add New MCQ</a>
+  <table class="table table-bordered table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Question</th>
+        <th>Options</th>
+        <th>Correct</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in questions %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ q.question_text }}</td>
+        <td>
+          <ul class="mb-0">
+            <li>A. {{ q.option_a }}</li>
+            <li>B. {{ q.option_b }}</li>
+            <li>C. {{ q.option_c }}</li>
+            <li>D. {{ q.option_d }}</li>
+          </ul>
+        </td>
+        <td>{{ q.correct_option }}</td>
+        <td>
+          <a href="/exams/mcq/{{ q.id }}/edit" class="btn btn-primary btn-sm">Edit</a>
+          <form action="/exams/mcq/{{ q.id }}/delete" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this MCQ?');">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
