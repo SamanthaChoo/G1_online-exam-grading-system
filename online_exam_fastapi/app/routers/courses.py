@@ -72,7 +72,7 @@ def list_courses(
     is_desc = (direction or "desc").lower() == "desc"
 
     courses_sorted = sorted(courses, key=sort_key, reverse=is_desc)
-    
+
     # Pagination
     total_courses = len(courses_sorted)
     total_pages = (total_courses + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_courses > 0 else 1
@@ -144,7 +144,7 @@ async def create_course(
     except (RuntimeError, AttributeError, TypeError):
         # If request.form() is not available (e.g., in tests with mock request), use empty list
         lecturer_ids_raw = []
-    
+
     code_clean = (code or "").strip().upper()
     name_clean = (name or "").strip()
 
@@ -180,7 +180,7 @@ async def create_course(
         try:
             lecturer_ids_list = [int(lid) for lid in lecturer_ids_raw if lid and str(lid).strip()]
         except (ValueError, TypeError):
-            errors["lecturers"] = "Invalid lecturer ID format."
+            pass
 
         # Verify all lecturer IDs are valid lecturers
         valid_lecturers = session.exec(
@@ -278,7 +278,7 @@ def enroll_form(
 
     enrolled_students = [s for s in students if s.id in enrolled_ids]
     available_students = [s for s in students if s.id not in enrolled_ids]
-    
+
     # Pagination for available students only (enrolled students are always shown)
     total_available = len(available_students)
     total_pages = (total_available + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_available > 0 else 1
@@ -312,7 +312,7 @@ async def enroll_students(
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     course = _get_course(course_id, session)
-    
+
     # Get student_ids from form - can be single value or multiple
     # HTML <select multiple> sends multiple fields with same name when multiple selected,
     # or single value when one selected. Use getlist() to handle both.
@@ -322,7 +322,7 @@ async def enroll_students(
     except (RuntimeError, AttributeError, TypeError):
         # If request.form() is not available (e.g., in tests with mock request), use empty list
         student_ids_raw = []
-    
+
     # Convert to integers and create set
     selected_ids = set()
     for sid in student_ids_raw:
@@ -410,6 +410,14 @@ async def update_course(
         # If request.form() is not available (e.g., in tests with mock request), use empty list
         lecturer_ids_raw = []
 
+    # Normalize lecturer_ids: getlist() always returns a list
+    lecturer_ids_list = []
+    if lecturer_ids_raw:
+        try:
+            lecturer_ids_list = [int(lid) for lid in lecturer_ids_raw if lid and str(lid).strip()]
+        except (ValueError, TypeError):
+            pass
+
     code_clean = (code or "").strip().upper()
     name_clean = (name or "").strip()
     errors = {}
@@ -433,30 +441,11 @@ async def update_course(
 
     # Ensure course code is unique across other courses
     if code_clean:
-        existing = session.exec(
+        existing_course = session.exec(
             select(Course).where(Course.code == code_clean, Course.id != course_id)
         ).first()
-        if errors:
-            # Fetch all lecturers for the form
-            lecturers = session.exec(
-                select(User).where(User.role == "lecturer", User.is_active.is_(True))
-            ).all()
-
-            context = {
-                "request": request,
-                "form": {
-                    "code": code or "",
-                    "name": name or "",
-                    "description": description or "",
-                },
-                "errors": errors,
-                "lecturers": lecturers,
-                "selected_lecturer_ids": lecturer_ids_list,
-                "current_user": current_user,
-            }
-            return templates.TemplateResponse(
-                "courses/form.html", context, status_code=status.HTTP_400_BAD_REQUEST
-            )
+        if existing_course:
+            errors["code"] = "This course code is already used by another course."
 
     if errors:
         # Fetch all lecturers for the form
