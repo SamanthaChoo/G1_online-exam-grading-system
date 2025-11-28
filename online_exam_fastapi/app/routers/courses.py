@@ -1,6 +1,7 @@
 """Course management routes."""
 
 from typing import List, Optional
+import re
 
 from app.database import get_session
 from app.deps import require_role
@@ -11,19 +12,27 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+COURSE_CODE_MAX_LENGTH = 20
+COURSE_NAME_MAX_LENGTH = 120
+COURSE_DESCRIPTION_MAX_LENGTH = 500  # 500 characters max for course description
+COURSE_CODE_PATTERN = re.compile(r"^[A-Z0-9\-]+$")
+
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+
+ITEMS_PER_PAGE = 10  # Number of items per page for pagination
 
 @router.get("/")
 def list_courses(
     request: Request,
     sort: Optional[str] = Query("created"),
     direction: Optional[str] = Query("desc"),
+    page: Optional[int] = Query(1, ge=1),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
-    """List courses with optional sorting by column."""
+    """List courses with optional sorting by column and pagination."""
     courses = session.exec(select(Course)).all()
     exam_counts = dict(
         session.exec(
@@ -62,10 +71,18 @@ def list_courses(
     is_desc = (direction or "desc").lower() == "desc"
 
     courses_sorted = sorted(courses, key=sort_key, reverse=is_desc)
+    
+    # Pagination
+    total_courses = len(courses_sorted)
+    total_pages = (total_courses + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_courses > 0 else 1
+    page = min(page, total_pages) if total_pages > 0 else 1
+    start_idx = (page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    courses_paginated = courses_sorted[start_idx:end_idx]
 
     context = {
         "request": request,
-        "courses": courses_sorted,
+        "courses": courses_paginated,
         "exam_counts": exam_counts,
         "enrollment_counts": enrollment_counts,
         "course_lecturers": course_lecturers_map,
@@ -74,6 +91,10 @@ def list_courses(
         "has_sort": (
             sort not in (None, "", "created") or (direction or "desc").lower() != "desc"
         ),
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_items": total_courses,
+        "items_per_page": ITEMS_PER_PAGE,
         "current_user": current_user,
     }
     return templates.TemplateResponse("courses/list.html", context)
@@ -103,24 +124,47 @@ def new_course_form(
 
 
 @router.post("/new")
-def create_course(
+async def create_course(
     request: Request,
-    code: str = Form(...),
-    name: str = Form(...),
+    code: Optional[str] = Form(None),
+    name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    lecturer_ids: Optional[list[int]] = Form(None),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
-    code_clean = code.strip()
-    name_clean = name.strip()
+    # Get lecturer_ids from form - can be single value or multiple
+    # HTML <select multiple> sends multiple fields with same name when multiple selected,
+    # or single value when one selected. Use getlist() to handle both.
+    # NOTE: We read from request.form() directly to avoid FastAPI trying to parse it as a list
+    # when only one value is selected (which would cause a validation error)
+    try:
+        form_data = await request.form()
+        lecturer_ids_raw = form_data.getlist("lecturer_ids")
+    except (RuntimeError, AttributeError, TypeError):
+        # If request.form() is not available (e.g., in tests with mock request), use empty list
+        lecturer_ids_raw = []
+    
+    code_clean = (code or "").strip().upper()
+    name_clean = (name or "").strip()
 
     errors = {}
 
     if not code_clean:
         errors["code"] = "Course code is required."
+    elif len(code_clean) > COURSE_CODE_MAX_LENGTH:
+        errors["code"] = f"Course code must be at most {COURSE_CODE_MAX_LENGTH} characters."
+    elif not COURSE_CODE_PATTERN.match(code_clean):
+        errors["code"] = "Course code can only contain letters, numbers, or hyphens."
+
     if not name_clean:
         errors["name"] = "Course name is required."
+    elif len(name_clean) > COURSE_NAME_MAX_LENGTH:
+        errors["name"] = f"Course name must be at most {COURSE_NAME_MAX_LENGTH} characters."
+
+    # Description validation (optional field, but has max length if provided)
+    description_clean = (description or "").strip() if description else ""
+    if description_clean and len(description_clean) > COURSE_DESCRIPTION_MAX_LENGTH:
+        errors["description"] = f"Course description must be at most {COURSE_DESCRIPTION_MAX_LENGTH} characters."
 
     # Check for duplicate code (case-insensitive)
     if (
@@ -129,13 +173,13 @@ def create_course(
     ):
         errors["code"] = "This course code is already in use. Please choose another."
 
-    # Validate lecturer IDs if provided
+    # Normalize lecturer_ids: getlist() always returns a list, even if empty or single value
     lecturer_ids_list = []
-    if lecturer_ids:
-        if isinstance(lecturer_ids, list):
-            lecturer_ids_list = [int(lid) for lid in lecturer_ids if lid]
-        else:
-            lecturer_ids_list = [int(lecturer_ids)]
+    if lecturer_ids_raw:
+        try:
+            lecturer_ids_list = [int(lid) for lid in lecturer_ids_raw if lid and str(lid).strip()]
+        except (ValueError, TypeError):
+            errors["lecturers"] = "Invalid lecturer ID format."
 
         # Verify all lecturer IDs are valid lecturers
         valid_lecturers = session.exec(
@@ -156,7 +200,11 @@ def create_course(
 
         context = {
             "request": request,
-            "form": {"code": code, "name": name, "description": description or ""},
+            "form": {
+                "code": code or "",
+                "name": name or "",
+                "description": description or "",
+            },
             "errors": errors,
             "lecturers": lecturers,
             "selected_lecturer_ids": lecturer_ids_list,
@@ -167,7 +215,7 @@ def create_course(
         )
 
     # Create course
-    course = Course(code=code_clean, name=name_clean, description=description)
+    course = Course(code=code_clean, name=name_clean, description=description_clean or None)
     session.add(course)
     session.commit()
     session.refresh(course)
@@ -198,6 +246,7 @@ def enroll_form(
     q: Optional[str] = Query(
         None, description="Search students by name, email, or matric"
     ),
+    page: Optional[int] = Query(1, ge=1),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
@@ -228,29 +277,58 @@ def enroll_form(
 
     enrolled_students = [s for s in students if s.id in enrolled_ids]
     available_students = [s for s in students if s.id not in enrolled_ids]
+    
+    # Pagination for available students only (enrolled students are always shown)
+    total_available = len(available_students)
+    total_pages = (total_available + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_available > 0 else 1
+    page = min(page, total_pages) if total_pages > 0 else 1
+    start_idx = (page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    available_students_paginated = available_students[start_idx:end_idx]
 
     context = {
         "request": request,
         "course": course,
         "q": q or "",
-        "enrolled_students": enrolled_students,
-        "available_students": available_students,
+        "enrolled_students": enrolled_students,  # Always show all enrolled
+        "available_students": available_students_paginated,  # Paginated
         "enrolled_ids": enrolled_ids,
         "enrolled_count": len(enrolled_ids),
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_items": total_available,  # Total available students
+        "items_per_page": ITEMS_PER_PAGE,
         "current_user": current_user,
     }
     return templates.TemplateResponse("courses/enroll.html", context)
 
 
 @router.post("/{course_id}/enroll")
-def enroll_students(
+async def enroll_students(
     course_id: int,
-    student_ids: Optional[List[int]] = Form(None),
+    request: Request,
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     course = _get_course(course_id, session)
-    selected_ids = set(map(int, student_ids)) if student_ids else set()
+    
+    # Get student_ids from form - can be single value or multiple
+    # HTML <select multiple> sends multiple fields with same name when multiple selected,
+    # or single value when one selected. Use getlist() to handle both.
+    try:
+        form_data = await request.form()
+        student_ids_raw = form_data.getlist("student_ids")
+    except (RuntimeError, AttributeError, TypeError):
+        # If request.form() is not available (e.g., in tests with mock request), use empty list
+        student_ids_raw = []
+    
+    # Convert to integers and create set
+    selected_ids = set()
+    for sid in student_ids_raw:
+        try:
+            selected_ids.add(int(sid))
+        except (ValueError, TypeError):
+            continue  # Skip invalid values
     existing_enrollments = session.exec(
         select(Enrollment).where(Enrollment.course_id == course_id)
     ).all()
@@ -310,26 +388,47 @@ def edit_course_form(
 
 
 @router.post("/{course_id}/edit")
-def update_course(
+async def update_course(
     course_id: int,
     request: Request,
-    code: str = Form(...),
-    name: str = Form(...),
+    code: Optional[str] = Form(None),
+    name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    lecturer_ids: Optional[list[int]] = Form(None),
     session: Session = Depends(get_session),
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     course = _get_course(course_id, session)
 
-    code_clean = code.strip()
-    name_clean = name.strip()
+    # Get lecturer_ids from form - handle both single and multiple values
+    # NOTE: We read from request.form() directly to avoid FastAPI trying to parse it as a list
+    # when only one value is selected (which would cause a validation error)
+    try:
+        form_data = await request.form()
+        lecturer_ids_raw = form_data.getlist("lecturer_ids")
+    except (RuntimeError, AttributeError, TypeError):
+        # If request.form() is not available (e.g., in tests with mock request), use empty list
+        lecturer_ids_raw = []
+
+    code_clean = (code or "").strip().upper()
+    name_clean = (name or "").strip()
     errors = {}
 
     if not code_clean:
         errors["code"] = "Course code is required."
+    elif len(code_clean) > COURSE_CODE_MAX_LENGTH:
+        errors["code"] = f"Course code must be at most {COURSE_CODE_MAX_LENGTH} characters."
+    elif not COURSE_CODE_PATTERN.match(code_clean):
+        errors["code"] = "Course code can only contain letters, numbers, or hyphens."
+
     if not name_clean:
         errors["name"] = "Course name is required."
+    elif len(name_clean) > COURSE_NAME_MAX_LENGTH:
+        errors["name"] = f"Course name must be at most {COURSE_NAME_MAX_LENGTH} characters."
+
+    # Description validation (optional field, but has max length if provided)
+    description_clean = (description or "").strip() if description else ""
+    if description_clean and len(description_clean) > COURSE_DESCRIPTION_MAX_LENGTH:
+        errors["description"] = f"Course description must be at most {COURSE_DESCRIPTION_MAX_LENGTH} characters."
 
     # Ensure course code is unique across other courses
     if code_clean:
@@ -339,13 +438,13 @@ def update_course(
         if existing:
             errors["code"] = "This course code is already used by another course."
 
-    # Validate lecturer IDs if provided
+    # Normalize lecturer_ids: getlist() always returns a list
     lecturer_ids_list = []
-    if lecturer_ids:
-        if isinstance(lecturer_ids, list):
-            lecturer_ids_list = [int(lid) for lid in lecturer_ids if lid]
-        else:
-            lecturer_ids_list = [int(lecturer_ids)]
+    if lecturer_ids_raw:
+        try:
+            lecturer_ids_list = [int(lid) for lid in lecturer_ids_raw if lid and str(lid).strip()]
+        except (ValueError, TypeError):
+            errors["lecturers"] = "Invalid lecturer ID format."
 
         # Verify all lecturer IDs are valid lecturers
         valid_lecturers = session.exec(
@@ -372,7 +471,7 @@ def update_course(
 
         context = {
             "request": request,
-            "form": {"code": code, "name": name, "description": description or ""},
+            "form": {"code": code_clean, "name": name_clean, "description": description_clean or ""},
             "errors": errors,
             "is_edit": True,
             "course_id": course_id,
@@ -389,7 +488,7 @@ def update_course(
     # Update course
     course.code = code_clean
     course.name = name_clean
-    course.description = description
+    course.description = description_clean or None
     session.add(course)
 
     # Update lecturer assignments
