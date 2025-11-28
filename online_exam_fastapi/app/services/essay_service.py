@@ -20,6 +20,11 @@ def get_exam(session: Session, exam_id: int) -> Optional[Exam]:
 def add_question(
     session: Session, exam_id: int, question_text: str, max_marks: int
 ) -> ExamQuestion:
+    # Ensure the target exam exists before adding the question
+    exam = session.get(Exam, exam_id)
+    if not exam:
+        raise ValueError(f"Exam with id={exam_id} does not exist")
+
     q = ExamQuestion(exam_id=exam_id, question_text=question_text, max_marks=max_marks)
     session.add(q)
     session.commit()

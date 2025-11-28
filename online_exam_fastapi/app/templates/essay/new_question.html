@@ -2,16 +2,20 @@
 {% block content %}
 <div class="container py-5">
   <h2>Add question to {{ exam.title }}</h2>
-  <form method="post">
-    <div class="mb-3">
-      <label class="form-label">Question text</label>
-      <textarea name="question_text" class="form-control" rows="4"></textarea>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Max marks</label>
-      <input type="number" name="max_marks" class="form-control" value="10" />
-    </div>
-    <button class="btn btn-primary">Add Question</button>
-  </form>
+  {% if error %}
+    <div class="alert alert-danger" role="alert">{{ error }}</div>
+  {% else %}
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Question text</label>
+        <textarea name="question_text" class="form-control" rows="4"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Max marks</label>
+        <input type="number" name="max_marks" class="form-control" value="10" />
+      </div>
+      <button class="btn btn-primary">Add Question</button>
+    </form>
+  {% endif %}
 </div>
 {% endblock %}
