@@ -80,6 +80,9 @@
           {% else %}
           <li><a href="/courses/">Courses</a></li>
           <li><a href="/essay">Essay</a></li>
+          {% if current_user and current_user.role == 'student' and current_user.student_id %}
+          <li><a href="/exams/schedule/student/{{ current_user.student_id }}">Exam Schedule</a></li>
+          {% endif %}
           <li><a href="/docs">API Docs</a></li>
           {% endif %}
         </ul>
