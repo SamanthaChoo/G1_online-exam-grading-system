@@ -88,7 +88,7 @@ function submitExam(auto=false) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ student_id: mcqData.student_id, answers })
   }).then(r => r.json()).then(res => {
-    window.location.href = '/exams/exam_finished.html';
+    window.location.href = '/exams/exam_finished';
   });
 }
 </script>

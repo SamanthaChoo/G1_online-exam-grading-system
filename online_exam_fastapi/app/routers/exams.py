@@ -41,7 +41,7 @@ def student_exam_schedule(student_id: int, request: Request, session: Session = 
     enrollments = session.exec(select(Enrollment).where(Enrollment.student_id == student_id)).all()
     course_ids = [e.course_id for e in enrollments]
     # Get all upcoming exams for these courses
-    now = datetime.utcnow()
+    now = datetime.now()
     exams = session.exec(select(Exam).where(Exam.course_id.in_(course_ids))).all()
     # Compute exam status
     exam_list = []
@@ -68,14 +68,19 @@ def student_exam_schedule(student_id: int, request: Request, session: Session = 
 def start_exam_page(exam_id: int, request: Request, student_id: int = Query(...), session: Session = Depends(get_session)):
     exam = session.get(Exam, exam_id)
     student = session.get(Student, student_id)
-    now = datetime.utcnow()
+    now = datetime.now()
     can_start = False
     countdown = None
     if exam and exam.start_time:
         mins_to_start = (exam.start_time - now).total_seconds() / 60
+        # If exam is within 30 minutes, allow start flow with countdown
         if 0 <= mins_to_start <= 30:
             can_start = True
             countdown = int((exam.start_time - now).total_seconds())
+        # If exam is already ongoing, allow immediate join (countdown 0)
+        elif exam.start_time <= now and exam.end_time and now <= exam.end_time:
+            can_start = True
+            countdown = 0
     context = {"request": request, "exam": exam, "student": student, "can_start": can_start, "countdown": countdown}
     return templates.TemplateResponse("exams/start_exam.html", context)
 
@@ -466,6 +471,12 @@ def exams_for_course(
         "current_user": current_user,
     }
     return templates.TemplateResponse("exams/list_by_course.html", context)
+
+
+@router.get("/exam_finished")
+def exam_finished(request: Request, current_user: Optional[User] = Depends(get_current_user)):
+    context = {"request": request, "current_user": current_user}
+    return templates.TemplateResponse("exams/exam_finished.html", context)
 
 
 @router.get("/{exam_id}")

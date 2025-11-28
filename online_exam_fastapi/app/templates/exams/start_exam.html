@@ -10,20 +10,21 @@
   {% if can_start %}
     <div class="alert alert-info">
       <h4>Exam will start soon!</h4>
-      <p>Countdown: <span id="countdown">{{ countdown }}</span> seconds</p>
+      <p>Countdown: <span id="countdown">{{ countdown if countdown is not none else 'N/A' }}</span> seconds</p>
       <form method="get" action="/exams/{{ exam.id }}/join">
         <input type="hidden" name="student_id" value="{{ student.id }}">
-        <button id="joinBtn" class="btn btn-success" type="submit" disabled>Join Exam Now</button>
+        <button id="joinBtn" class="btn btn-success" type="submit"{% if countdown is not none and countdown > 0 %} disabled{% endif %}>Join Exam Now</button>
       </form>
     </div>
+    {% if countdown is not none and countdown > 0 %}
     <script>
-      let countdown = {{ countdown }};
+      let remainingSeconds = {{ countdown|tojson }};
       const countdownEl = document.getElementById('countdown');
       const joinBtn = document.getElementById('joinBtn');
       function updateCountdown() {
-        if (countdown > 0) {
-          countdown--;
-          countdownEl.textContent = countdown;
+        if (remainingSeconds > 0) {
+          remainingSeconds--;
+          countdownEl.textContent = remainingSeconds;
         } else {
           joinBtn.disabled = false;
           countdownEl.textContent = '0';
@@ -31,6 +32,7 @@
       }
       setInterval(updateCountdown, 1000);
     </script>
+    {% endif %}
   {% else %}
     <div class="alert alert-warning">
       <strong>You can only start this exam within 30 minutes before the scheduled start time.</strong>
