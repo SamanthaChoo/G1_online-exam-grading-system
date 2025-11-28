@@ -24,8 +24,10 @@ EXAM_DURATION_MAX_MINUTES = 600
 EXAM_INSTRUCTIONS_MAX_LENGTH = 2000  # 2,000 characters max for instructions (roughly 1-2 pages)
 ITEMS_PER_PAGE = 10  # Number of items per page for pagination
 
+
 def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
     return datetime.fromisoformat(value) if value else None
+
 
 def _get_exam(exam_id: int, session: Session) -> Exam:
     exam = session.get(Exam, exam_id)
@@ -33,7 +35,9 @@ def _get_exam(exam_id: int, session: Session) -> Exam:
         raise HTTPException(status_code=404, detail="Exam not found")
     return exam
 
+
 # ===================== SPRINT 1: STUDENT ROUTES =====================
+
 
 @router.get("/schedule/student/{student_id}")
 def student_exam_schedule(student_id: int, request: Request, session: Session = Depends(get_session)):
@@ -444,7 +448,7 @@ def exams_for_course(
     sort_key = key_map.get(sort or "start", key_map["start"])
     is_desc = (direction or "asc").lower() == "desc"
     exams_sorted = sorted(exams, key=sort_key, reverse=is_desc)
-    
+
     # Pagination
     total_exams = len(exams_sorted)
     total_pages = (total_exams + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_exams > 0 else 1
