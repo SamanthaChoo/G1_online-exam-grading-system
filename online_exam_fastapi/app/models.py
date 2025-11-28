@@ -157,3 +157,34 @@ class PasswordResetToken(SQLModel, table=True):
     expires_at: datetime
     used: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ===================== SPRINT 1 MCQ MODELS =====================
+
+class MCQQuestion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exam.id")
+    question_text: str
+    option_a: str
+    option_b: str
+    option_c: str
+    option_d: str
+    correct_option: str
+
+
+class MCQAnswer(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="student.id")
+    exam_id: int = Field(foreign_key="exam.id")
+    question_id: int = Field(foreign_key="mcqquestion.id")
+    selected_option: Optional[str] = None
+    saved_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MCQResult(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="student.id")
+    exam_id: int = Field(foreign_key="exam.id")
+    score: int
+    total_questions: int
+    graded_at: datetime

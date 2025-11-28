@@ -67,9 +67,20 @@
           <li><a href="/courses/">Courses</a></li>
           <li><a href="/exams/new">New Exam</a></li>
           <li><a href="/essay">Essay</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mcqDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              MCQ
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="mcqDropdown">
+              <li><a class="dropdown-item" href="/exams/mcq/menu">MCQ Questions (CRUD)</a></li>
+              <li><a class="dropdown-item" href="#" onclick="alert('Automatic MCQ grading is performed when students submit or time expires. Scores are stored automatically.'); return false;">Automatic MCQ Grading</a></li>
+            </ul>
+          </li>
+          <li><a href="/docs">API Docs</a></li>
           {% else %}
           <li><a href="/courses/">Courses</a></li>
           <li><a href="/essay">Essay</a></li>
+          <li><a href="/docs">API Docs</a></li>
           {% endif %}
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
@@ -128,6 +139,7 @@
             <li><a href="/courses/">Courses</a></li>
             <li><a href="/exams/new">New Exam</a></li>
             <li><a href="/essay">Essay</a></li>
+            <li><a href="/docs">API Docs</a></li>
             <li><a href="/auth/login">Login</a></li>
           </ul>
         </div>

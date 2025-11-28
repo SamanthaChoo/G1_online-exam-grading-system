@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Start Exam{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Exam: {{ exam.title }}</h2>
+  <p><strong>Subject:</strong> {{ exam.subject }}</p>
+  <p><strong>Start Time:</strong> {{ exam.start_time.strftime('%Y-%m-%d %H:%M') if exam.start_time else 'N/A' }}</p>
+  <p><strong>Duration:</strong> {{ exam.duration_minutes }} minutes</p>
+  <hr>
+  {% if can_start %}
+    <div class="alert alert-info">
+      <h4>Exam will start soon!</h4>
+      <p>Countdown: <span id="countdown">{{ countdown }}</span> seconds</p>
+      <form method="get" action="/exams/{{ exam.id }}/join">
+        <input type="hidden" name="student_id" value="{{ student.id }}">
+        <button id="joinBtn" class="btn btn-success" type="submit" disabled>Join Exam Now</button>
+      </form>
+    </div>
+    <script>
+      let countdown = {{ countdown }};
+      const countdownEl = document.getElementById('countdown');
+      const joinBtn = document.getElementById('joinBtn');
+      function updateCountdown() {
+        if (countdown > 0) {
+          countdown--;
+          countdownEl.textContent = countdown;
+        } else {
+          joinBtn.disabled = false;
+          countdownEl.textContent = '0';
+        }
+      }
+      setInterval(updateCountdown, 1000);
+    </script>
+  {% else %}
+    <div class="alert alert-warning">
+      <strong>You can only start this exam within 30 minutes before the scheduled start time.</strong>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
