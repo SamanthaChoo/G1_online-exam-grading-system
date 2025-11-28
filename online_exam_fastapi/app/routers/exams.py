@@ -258,7 +258,7 @@ def exams_for_course(
     sort_key = key_map.get(sort or "start", key_map["start"])
     is_desc = (direction or "asc").lower() == "desc"
     exams_sorted = sorted(exams, key=sort_key, reverse=is_desc)
-    
+
     # Pagination
     total_exams = len(exams_sorted)
     total_pages = (total_exams + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_exams > 0 else 1

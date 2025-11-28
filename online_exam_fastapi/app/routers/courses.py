@@ -1,6 +1,6 @@
 """Course management routes."""
 
-from typing import List, Optional
+from typing import Optional
 import re
 
 from app.database import get_session
@@ -22,6 +22,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 ITEMS_PER_PAGE = 10  # Number of items per page for pagination
+
 
 @router.get("/")
 def list_courses(
@@ -435,27 +436,27 @@ async def update_course(
         existing = session.exec(
             select(Course).where(Course.code == code_clean, Course.id != course_id)
         ).first()
-        if existing:
-            errors["code"] = "This course code is already used by another course."
+        if errors:
+            # Fetch all lecturers for the form
+            lecturers = session.exec(
+                select(User).where(User.role == "lecturer", User.is_active.is_(True))
+            ).all()
 
-    # Normalize lecturer_ids: getlist() always returns a list
-    lecturer_ids_list = []
-    if lecturer_ids_raw:
-        try:
-            lecturer_ids_list = [int(lid) for lid in lecturer_ids_raw if lid and str(lid).strip()]
-        except (ValueError, TypeError):
-            errors["lecturers"] = "Invalid lecturer ID format."
-
-        # Verify all lecturer IDs are valid lecturers
-        valid_lecturers = session.exec(
-            select(User).where(
-                User.id.in_(lecturer_ids_list),
-                User.role == "lecturer",
-                User.is_active.is_(True),
+            context = {
+                "request": request,
+                "form": {
+                    "code": code or "",
+                    "name": name or "",
+                    "description": description or "",
+                },
+                "errors": errors,
+                "lecturers": lecturers,
+                "selected_lecturer_ids": lecturer_ids_list,
+                "current_user": current_user,
+            }
+            return templates.TemplateResponse(
+                "courses/form.html", context, status_code=status.HTTP_400_BAD_REQUEST
             )
-        ).all()
-        if len(valid_lecturers) != len(lecturer_ids_list):
-            errors["lecturers"] = "One or more selected lecturers are invalid."
 
     if errors:
         # Fetch all lecturers for the form
