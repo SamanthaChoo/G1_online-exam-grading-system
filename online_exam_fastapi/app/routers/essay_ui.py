@@ -50,8 +50,6 @@ def essay_questions(
     )
 
 
-
-
 @router.get("/essay/questions/select")
 def select_exam_for_question(
     request: Request,
@@ -78,7 +76,6 @@ def select_exam_for_question_submit(exam_id: int = Form(...)):
     return RedirectResponse(url=f"/essay/{exam_id}/questions/new", status_code=303)
 
 
-
 @router.get("/essay/questions/new")
 def new_question_select_redirect(request: Request, session: Session = Depends(get_session)):
     """Ensure the user is always prompted to select an exam first.
@@ -87,7 +84,7 @@ def new_question_select_redirect(request: Request, session: Session = Depends(ge
     form (even if there is only one exam). This route redirects to the
     selection page.
     """
-    return RedirectResponse(url=f"/essay/questions/select", status_code=303)
+    return RedirectResponse(url="/essay/questions/select", status_code=303)
 
 
 @router.get("/essay/{exam_id}/questions/new")
@@ -309,7 +306,6 @@ async def attempt_submit(
         submit_answers(session, exam_id, student_id, answers)
     # After a normal submit, show a friendly confirmation page
     return RedirectResponse(url=f"/essay/{exam_id}/attempt/{attempt_id}/submitted", status_code=303)
-
 
 
 @router.get("/essay/{exam_id}/attempt/{attempt_id}/submitted")
