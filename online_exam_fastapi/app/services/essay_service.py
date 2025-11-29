@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion
+from app.utils import sanitize_question_text, sanitize_feedback, validate_marks
 from sqlmodel import Session, select
 
 
@@ -18,14 +19,30 @@ def get_exam(session: Session, exam_id: int) -> Optional[Exam]:
 
 
 def add_question(
-    session: Session, exam_id: int, question_text: str, max_marks: int
+    session: Session, exam_id: int, question_text: str, max_marks: int, allow_negative_marks: bool = False
 ) -> ExamQuestion:
     # Ensure the target exam exists before adding the question
     exam = session.get(Exam, exam_id)
     if not exam:
         raise ValueError(f"Exam with id={exam_id} does not exist")
+    
+    # Sanitize question text to prevent XSS
+    sanitized_text = sanitize_question_text(question_text)
+    if not sanitized_text:
+        raise ValueError("Question text cannot be empty after sanitization")
+    
+    # Validate max_marks is positive
+    if max_marks < 1:
+        raise ValueError("max_marks must be at least 1")
+    if max_marks > 1000:
+        raise ValueError("max_marks cannot exceed 1000")
 
-    q = ExamQuestion(exam_id=exam_id, question_text=question_text, max_marks=max_marks)
+    q = ExamQuestion(
+        exam_id=exam_id,
+        question_text=sanitized_text,
+        max_marks=max_marks,
+        allow_negative_marks=allow_negative_marks
+    )
     session.add(q)
     session.commit()
     session.refresh(q)
@@ -150,18 +167,60 @@ def timeout_attempt(
     return attempt
 
 
-def grade_attempt(session: Session, attempt_id: int, scores: List[dict]) -> dict:
+def grade_attempt(
+    session: Session,
+    attempt_id: int,
+    scores: List[dict],
+    feedback_list: Optional[List[dict]] = None
+) -> dict:
+    """Grade an exam attempt with marks and optional feedback.
+    
+    Args:
+        session: Database session
+        attempt_id: ID of the attempt to grade
+        scores: List of dicts with question_id and marks
+        feedback_list: Optional list of dicts with question_id and feedback
+        
+    Returns:
+        Dict with grading summary
+        
+    Raises:
+        ValueError: If marks are out of valid range
+    """
+    # Build feedback map if provided
+    feedback_map = {}
+    if feedback_list:
+        for f in feedback_list:
+            qid = f.get("question_id")
+            text = f.get("feedback", "")
+            if text:
+                feedback_map[qid] = sanitize_feedback(text)
+    
     # Update marks_awarded for each question
     total = 0
     for s in scores:
         qid = s.get("question_id")
         marks = s.get("marks")
+        
+        # Get the question to check max_marks and allow_negative_marks
+        question = session.get(ExamQuestion, qid)
+        if not question:
+            raise ValueError(f"Question {qid} does not exist")
+        
+        # Validate marks are in range
+        try:
+            validate_marks(marks, question.max_marks, question.allow_negative_marks)
+        except ValueError as e:
+            raise ValueError(f"Question {qid}: {str(e)}")
+        
         stmt = select(EssayAnswer).where(
             (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == qid)
         )
         ans = session.exec(stmt).first()
         if ans:
             ans.marks_awarded = marks
+            if qid in feedback_map:
+                ans.grader_feedback = feedback_map[qid]
             session.add(ans)
             total += marks or 0
         else:
@@ -171,6 +230,7 @@ def grade_attempt(session: Session, attempt_id: int, scores: List[dict]) -> dict
                 question_id=qid,
                 answer_text=None,
                 marks_awarded=marks,
+                grader_feedback=feedback_map.get(qid)
             )
             session.add(new)
             total += marks or 0

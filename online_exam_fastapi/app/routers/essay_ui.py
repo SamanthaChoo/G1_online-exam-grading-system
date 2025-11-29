@@ -111,9 +111,13 @@ def create_question(
     exam_id: int,
     question_text: str = Form(...),
     max_marks: int = Form(...),
+    allow_negative_marks: bool = Form(default=False),
     session: Session = Depends(get_session),
 ):
-    add_question(session, exam_id, question_text, max_marks)
+    try:
+        add_question(session, exam_id, question_text, max_marks, allow_negative_marks)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
 
 
@@ -410,6 +414,7 @@ async def grade_submit(
     form = await request.form()
     # collect scores
     scores = []
+    feedback_list = []
     for key, value in form.items():
         if key.startswith("score_"):
             try:
@@ -417,11 +422,22 @@ async def grade_submit(
             except Exception:
                 continue
             try:
-                marks = int(value)
+                marks = float(value)
             except Exception:
                 marks = 0
             scores.append({"question_id": qid, "marks": marks})
-    result = grade_attempt(session, attempt_id, scores)
+        elif key.startswith("feedback_"):
+            try:
+                qid = int(key.split("_")[1])
+            except Exception:
+                continue
+            feedback_list.append({"question_id": qid, "feedback": value})
+    
+    try:
+        result = grade_attempt(session, attempt_id, scores, feedback_list)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
     # Build per-question breakdown to show on result page
     qlist = session.exec(
         select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
@@ -441,6 +457,7 @@ async def grade_submit(
                 "marks_awarded": (
                     ans.marks_awarded if ans and ans.marks_awarded is not None else 0
                 ),
+                "feedback": ans.grader_feedback if ans else None,
             }
         )
 

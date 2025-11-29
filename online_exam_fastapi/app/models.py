@@ -86,12 +86,17 @@ class ExamQuestion(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     exam_id: int = Field(foreign_key="exam.id")
-    question_text: str
-    max_marks: int
+    question_text: str = Field(min_length=1, max_length=5000)
+    max_marks: int = Field(ge=1, le=1000)
+    allow_negative_marks: bool = Field(default=False)
 
 
 class ExamAttempt(SQLModel, table=True):
     """Tracks an attempt by a student for an exam."""
+
+    __table_args__ = (
+        UniqueConstraint("exam_id", "student_id", "is_final", name="uq_exam_student_final_attempt"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     exam_id: int = Field(foreign_key="exam.id")
@@ -108,8 +113,9 @@ class EssayAnswer(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     attempt_id: int = Field(foreign_key="examattempt.id")
     question_id: int = Field(foreign_key="examquestion.id")
-    answer_text: Optional[str] = None
-    marks_awarded: Optional[int] = None
+    answer_text: Optional[str] = Field(default=None, max_length=50000)
+    marks_awarded: Optional[float] = None
+    grader_feedback: Optional[str] = Field(default=None, max_length=2000)
 
 
 class CourseLecturer(SQLModel, table=True):
