@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}MCQ Management{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Select Exam for MCQ Management</h2>
+  <p class="mb-3">Choose an exam below to view, add, edit, or delete MCQ questions for that exam.</p>
+  <table class="table table-bordered table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Subject</th>
+        <th>Course</th>
+        <th>Status</th>
+        <th>Start Time</th>
+        <th>End Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for exam in exams %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ exam.title }}</td>
+        <td>{{ exam.subject }}</td>
+        <td>{{ exam.course_id }}</td>
+        <td>{{ exam.status }}</td>
+        <td>{{ exam.start_time or '-' }}</td>
+        <td>{{ exam.end_time or '-' }}</td>
+        <td>
+          {% set mcq_count = exam.mcq_questions|length if exam.mcq_questions is defined else 0 %}
+          {# Always show View if there is at least one MCQ #}
+          {% if mcq_count > 0 %}
+            <a href="/exams/{{ exam.id }}/mcq" class="btn btn-primary btn-sm">View MCQ Questions</a>
+          {% endif %}
+          {# Also show Add when the exam has 3 or fewer MCQs (keep Add visible at count == 3) #}
+          {% if mcq_count <= 3 %}
+            <a href="/exams/{{ exam.id }}/mcq/new" class="btn btn-success btn-sm ms-2">Add MCQ Question</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center">No exams found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
