@@ -26,12 +26,20 @@ def cleanup_db():
     add `@pytest.mark.usefixtures("cleanup_db")` to the test function or class.
     """
     _ensure_app_on_path()
-    from app.database import engine
+    from app.database import engine, create_db_and_tables
+
+    # Make sure all tables exist for each test run (idempotent).
+    create_db_and_tables()
 
     yield  # run the test
 
     # Best-effort cleanup in FK-safe order.
     with Session(engine) as session:
+        # MCQ-related tables (depend on exam / student)
+        session.exec(text("DELETE FROM mcqanswer"))
+        session.exec(text("DELETE FROM mcqresult"))
+        session.exec(text("DELETE FROM mcqquestion"))
+
         # Essay-related tables
         session.exec(text("DELETE FROM essayanswer"))
         session.exec(text("DELETE FROM examattempt"))

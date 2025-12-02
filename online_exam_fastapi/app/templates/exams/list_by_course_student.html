@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Exams - {{ course.name }}{% endblock %}
+
+{% block content %}
+
+<style>
+  .exam-header-card {
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  .exam-header-card .card-body {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  .exam-header-card h1,
+  .exam-header-card p {
+    color: white;
+    margin: 0;
+  }
+  .exam-table-card {
+    border-radius: 1rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+</style>
+
+<div class="container py-4">
+  <!-- Header Card -->
+  <div class="card border-0 shadow-sm exam-header-card mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h1 class="h3 mb-2">
+            <i class="bi bi-journal-text me-2"></i>Exams
+          </h1>
+          <p class="mb-0 opacity-90">
+            {{ course.code }} · {{ course.name }}
+          </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="/courses/student" class="btn btn-light">
+            <i class="bi bi-arrow-left me-2"></i>Back to My Courses
+          </a>
+          {% if student %}
+          <a href="/exams/schedule/student/{{ student.id }}" class="btn btn-light">
+            <i class="bi bi-calendar-event me-2"></i>Exam Schedule
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if exams %}
+  <!-- Exams Table -->
+  <div class="card border-0 shadow-sm exam-table-card">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-table me-2"></i>Available Exams
+      </h5>
+      <span class="badge bg-secondary">{{ exams|length }} Exam{% if exams|length != 1 %}s{% endif %}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width: 20%;">
+                <a href="?sort=title&direction={% if sort == 'title' and direction == 'asc' %}desc{% else %}asc{% endif %}"
+                   class="text-decoration-none text-dark">
+                  Title
+                  {% if sort == 'title' %}
+                    {% if direction == 'asc' %}
+                    <i class="bi bi-arrow-up-short"></i>
+                    {% else %}
+                    <i class="bi bi-arrow-down-short"></i>
+                    {% endif %}
+                  {% endif %}
+                </a>
+              </th>
+              <th scope="col" style="width: 15%;">
+                <a href="?sort=subject&direction={% if sort == 'subject' and direction == 'asc' %}desc{% else %}asc{% endif %}"
+                   class="text-decoration-none text-dark">
+                  Subject
+                  {% if sort == 'subject' %}
+                    {% if direction == 'asc' %}
+                    <i class="bi bi-arrow-up-short"></i>
+                    {% else %}
+                    <i class="bi bi-arrow-down-short"></i>
+                    {% endif %}
+                  {% endif %}
+                </a>
+              </th>
+              <th scope="col" class="text-center" style="width: 15%;">
+                <a href="?sort=start&direction={% if sort == 'start' and direction == 'asc' %}desc{% else %}asc{% endif %}"
+                   class="text-decoration-none text-dark">
+                  Start Time
+                  {% if sort == 'start' %}
+                    {% if direction == 'asc' %}
+                    <i class="bi bi-arrow-up-short"></i>
+                    {% else %}
+                    <i class="bi bi-arrow-down-short"></i>
+                    {% endif %}
+                  {% endif %}
+                </a>
+              </th>
+              <th scope="col" class="text-center" style="width: 10%;">
+                <a href="?sort=duration&direction={% if sort == 'duration' and direction == 'asc' %}desc{% else %}asc{% endif %}"
+                   class="text-decoration-none text-dark">
+                  Duration
+                  {% if sort == 'duration' %}
+                    {% if direction == 'asc' %}
+                    <i class="bi bi-arrow-up-short"></i>
+                    {% else %}
+                    <i class="bi bi-arrow-down-short"></i>
+                    {% endif %}
+                  {% endif %}
+                </a>
+              </th>
+              <th scope="col" class="text-center" style="width: 15%;">
+                <a href="?sort=status&direction={% if sort == 'status' and direction == 'asc' %}desc{% else %}asc{% endif %}"
+                   class="text-decoration-none text-dark">
+                  Status
+                  {% if sort == 'status' %}
+                    {% if direction == 'asc' %}
+                    <i class="bi bi-arrow-up-short"></i>
+                    {% else %}
+                    <i class="bi bi-arrow-down-short"></i>
+                    {% endif %}
+                  {% endif %}
+                </a>
+              </th>
+              <th scope="col" class="text-center" style="width: 25%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in exams %}
+            {% set exam = item.exam %}
+            {% set exam_status = item.status %}
+            {% set has_result = item.has_result %}
+            <tr>
+              <td>
+                <strong>{{ exam.title }}</strong>
+              </td>
+              <td>
+                <span class="text-muted">{{ exam.subject }}</span>
+              </td>
+              <td class="text-center">
+                {% if exam.start_time %}
+                  <div>
+                    <i class="bi bi-calendar3 me-1 text-muted"></i>
+                    {{ exam.start_time.strftime("%d %b %Y") }}
+                  </div>
+                  <small class="text-muted">
+                    <i class="bi bi-clock me-1"></i>
+                    {{ exam.start_time.strftime("%H:%M") }}
+                  </small>
+                {% else %}
+                  <span class="text-muted small">Not scheduled</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <span class="badge bg-info-subtle text-info">
+                  {{ exam.duration_minutes }} min
+                </span>
+              </td>
+              <td class="text-center">
+                {% if exam_status == 'upcoming' %}
+                  <span class="badge bg-secondary">Upcoming</span>
+                {% elif exam_status == 'starting soon' %}
+                  <span class="badge bg-warning text-dark">
+                    <i class="bi bi-hourglass-split me-1"></i>Starting Soon
+                  </span>
+                {% elif exam_status == 'ongoing' %}
+                  <span class="badge bg-success">
+                    <i class="bi bi-play-circle me-1"></i>Ongoing
+                  </span>
+                {% elif exam_status == 'ended' %}
+                  <span class="badge bg-danger">
+                    <i class="bi bi-check-circle me-1"></i>Ended
+                  </span>
+                {% else %}
+                  <span class="badge bg-light text-dark">Unscheduled</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="d-inline-flex gap-2">
+                  <a href="/exams/{{ exam.id }}/view" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye me-1"></i>View Details
+                  </a>
+                  {% if exam_status in ['starting soon', 'ongoing'] and not has_result and student %}
+                    <a href="/exams/{{ exam.id }}/start?student_id={{ student.id }}" class="btn btn-sm btn-success">
+                      <i class="bi bi-play-fill me-1"></i>Start
+                    </a>
+                  {% elif has_result %}
+                    <span class="badge bg-success-subtle text-success">
+                      <i class="bi bi-check-circle me-1"></i>Completed
+                    </span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% if total_pages > 1 %}
+    <div class="card-footer bg-white">
+      <nav aria-label="Exam pagination">
+        <ul class="pagination justify-content-center mb-0">
+          {% if current_page > 1 %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ current_page - 1 }}{% if sort %}&sort={{ sort }}{% endif %}{% if direction %}&direction={{ direction }}{% endif %}">Previous</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled">
+            <span class="page-link">Previous</span>
+          </li>
+          {% endif %}
+          
+          {% for p in range(1, total_pages + 1) %}
+            {% if p == current_page %}
+            <li class="page-item active">
+              <span class="page-link">{{ p }}</span>
+            </li>
+            {% elif p == 1 or p == total_pages or (p >= current_page - 1 and p <= current_page + 1) %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ p }}{% if sort %}&sort={{ sort }}{% endif %}{% if direction %}&direction={{ direction }}{% endif %}">{{ p }}</a>
+            </li>
+            {% elif p == current_page - 2 or p == current_page + 2 %}
+            <li class="page-item disabled">
+              <span class="page-link">...</span>
+            </li>
+            {% endif %}
+          {% endfor %}
+          
+          {% if current_page < total_pages %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ current_page + 1 }}{% if sort %}&sort={{ sort }}{% endif %}{% if direction %}&direction={{ direction }}{% endif %}">Next</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled">
+            <span class="page-link">Next</span>
+          </li>
+          {% endif %}
+        </ul>
+        <div class="text-center text-muted small mt-2">
+          Showing {{ ((current_page - 1) * items_per_page) + 1 }} to {{ [current_page * items_per_page, total_items]|min }} of {{ total_items }} exams
+        </div>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <!-- Empty State -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <div class="mb-4">
+        <i class="bi bi-journal-x" style="font-size: 4rem; color: #dee2e6;"></i>
+      </div>
+      <h4 class="text-muted mb-3">No Exams Available</h4>
+      <p class="text-muted mb-4">
+        There are no exams available for this course yet.<br>
+        Exams will appear here once they are created and scheduled by your lecturer.
+      </p>
+      <a href="/courses/student" class="btn btn-primary">
+        <i class="bi bi-arrow-left me-2"></i>Back to My Courses
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

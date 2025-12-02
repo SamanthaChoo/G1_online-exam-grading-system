@@ -46,8 +46,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 app.add_middleware(SessionMiddleware, secret_key="CHANGE_ME_TO_A_RANDOM_SECRET")
 
 # Static + templates configuration
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+from pathlib import Path
+BASE_DIR = Path(__file__).parent
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # Routers
 app.include_router(auth_router_module.router, prefix="/auth", tags=["auth"])

@@ -3,25 +3,36 @@
 {% block content %}
 <div class="container mt-4">
   <h2>{{ 'Edit MCQ' if mcq else 'Add New MCQ' }}</h2>
-  <form method="post" action="{% if mcq %}/exams/mcq/{{ mcq.id }}/edit{% else %}/exams/{{ exam.id }}/mcq/new{% endif %}">
+
+  {% if errors %}
+  <div class="alert alert-danger">
+    <ul class="mb-0">
+      {% for field, message in errors.items() %}
+      <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{% if mcq %}/exams/mcq/{{ mcq.id }}/edit{% else %}/exams/{{ exam.id }}/mcq/new{% endif %}" onsubmit="return validateOptions();">
     <div class="mb-3">
       <label for="question_text" class="form-label">Question</label>
-      <textarea class="form-control" id="question_text" name="question_text" required>{{ mcq.question_text if mcq else '' }}</textarea>
+      <textarea class="form-control" id="question_text" name="question_text" minlength="5" required oninput="this.value = this.value.trimStart()">{{ form.question_text if form else (mcq.question_text if mcq else '') }}</textarea>
     </div>
     <div class="mb-3">
       <label class="form-label">Options</label>
-      <input class="form-control mb-2" type="text" name="option_a" placeholder="Option A" value="{{ mcq.option_a if mcq else '' }}" required>
-      <input class="form-control mb-2" type="text" name="option_b" placeholder="Option B" value="{{ mcq.option_b if mcq else '' }}" required>
-      <input class="form-control mb-2" type="text" name="option_c" placeholder="Option C" value="{{ mcq.option_c if mcq else '' }}" required>
-      <input class="form-control mb-2" type="text" name="option_d" placeholder="Option D" value="{{ mcq.option_d if mcq else '' }}" required>
+      <input class="form-control mb-2" type="text" name="option_a" placeholder="Option A" minlength="1" required value="{{ form.option_a if form else (mcq.option_a if mcq else '') }}" oninput="this.value = this.value.trimStart()">
+      <input class="form-control mb-2" type="text" name="option_b" placeholder="Option B" minlength="1" required value="{{ form.option_b if form else (mcq.option_b if mcq else '') }}" oninput="this.value = this.value.trimStart()">
+      <input class="form-control mb-2" type="text" name="option_c" placeholder="Option C" minlength="1" required value="{{ form.option_c if form else (mcq.option_c if mcq else '') }}" oninput="this.value = this.value.trimStart()">
+      <input class="form-control mb-2" type="text" name="option_d" placeholder="Option D" minlength="1" required value="{{ form.option_d if form else (mcq.option_d if mcq else '') }}" oninput="this.value = this.value.trimStart()">
     </div>
     <div class="mb-3">
       <label for="correct_option" class="form-label">Correct Option</label>
       <select class="form-select" id="correct_option" name="correct_option" required>
-        <option value="A" {% if mcq and mcq.correct_option=='A' %}selected{% endif %}>A</option>
-        <option value="B" {% if mcq and mcq.correct_option=='B' %}selected{% endif %}>B</option>
-        <option value="C" {% if mcq and mcq.correct_option=='C' %}selected{% endif %}>C</option>
-        <option value="D" {% if mcq and mcq.correct_option=='D' %}selected{% endif %}>D</option>
+        <option value="A" {% if (form and form.correct_option=='A') or (mcq and mcq.correct_option=='A') %}selected{% endif %}>A</option>
+        <option value="B" {% if (form and form.correct_option=='B') or (mcq and mcq.correct_option=='B') %}selected{% endif %}>B</option>
+        <option value="C" {% if (form and form.correct_option=='C') or (mcq and mcq.correct_option=='C') %}selected{% endif %}>C</option>
+        <option value="D" {% if (form and form.correct_option=='D') or (mcq and mcq.correct_option=='D') %}selected{% endif %}>D</option>
       </select>
     </div>
     <button type="submit" class="btn btn-success">{{ 'Update' if mcq else 'Create' }}</button>
@@ -29,4 +40,28 @@
     <a href="/exams/{{ exam.id }}/mcq" class="btn btn-outline-primary ms-2">View All MCQs</a>
   </form>
 </div>
+
+<script>
+function validateOptions() {
+  const a = document.querySelector("input[name='option_a']").value.trim();
+  const b = document.querySelector("input[name='option_b']").value.trim();
+  const c = document.querySelector("input[name='option_c']").value.trim();
+  const d = document.querySelector("input[name='option_d']").value.trim();
+
+  const opts = [a, b, c, d];
+  const unique = new Set(opts.filter(x => x !== ""));
+
+  if (opts.some(x => x.length === 0)) {
+    alert("All options must be filled.");
+    return false;
+  }
+
+  if (unique.size < 4) {
+    alert("Options must be unique!");
+    return false;
+  }
+
+  return true;
+}
+</script>
 {% endblock %}

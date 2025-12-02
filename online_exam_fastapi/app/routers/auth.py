@@ -22,11 +22,18 @@ def login_form(
 ):
     if current_user:
         # Already logged in – send to a sensible default depending on role
-        if current_user.role in ("lecturer", "admin"):
+        if current_user.role == "admin":
+            return RedirectResponse(
+                url="/admin/users", status_code=status.HTTP_303_SEE_OTHER
+            )
+        elif current_user.role == "lecturer":
             return RedirectResponse(
                 url="/courses/", status_code=status.HTTP_303_SEE_OTHER
             )
-        return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
+        else:  # student
+            return RedirectResponse(
+                url="/courses/student", status_code=status.HTTP_303_SEE_OTHER
+            )
 
     context = {"request": request, "form": None, "error": None}
     return templates.TemplateResponse("auth/login.html", context)
@@ -143,7 +150,7 @@ def login(
     elif user.role == "lecturer":
         redirect_url = "/courses/"
     else:  # student
-        redirect_url = "/"  # Home page for students
+        redirect_url = "/courses/student"  # Student course list page
 
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
@@ -336,7 +343,7 @@ def register_student(
     # Auto-login newly registered student
     request.session["user_id"] = user.id
 
-    return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/courses/student", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/request-reset")
