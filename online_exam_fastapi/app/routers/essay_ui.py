@@ -1,5 +1,5 @@
 from app.database import get_session
-from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion, Student, User, Enrollment, ExamActivityLog
+from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion, Student, User, Enrollment
 from app.services.essay_service import (
     add_question,
     grade_attempt,
@@ -474,52 +474,53 @@ async def grade_submit(
     )
 
 
-@router.post("/essay/{exam_id}/log-activity")
-async def log_essay_activity(
-    exam_id: int,
-    request: Request,
-    session: Session = Depends(get_session)
-):
-    """Log suspicious activities during essay exam taking for anti-cheating purposes."""
-    data = await request.json()
-    student_id = data.get("student_id")
-    attempt_id = data.get("attempt_id")  # Required for essay attempts
-    activity_type = data.get("activity_type")
-    metadata = data.get("metadata")  # Optional JSON string or dict
-    severity = data.get("severity", "low")  # low, medium, high
-
-    if not student_id or not activity_type:
-        return {"status": "error", "message": "student_id and activity_type are required"}
-
-    # Validate exam exists
-    exam = session.get(Exam, exam_id)
-    if not exam:
-        return {"status": "error", "message": "Exam not found"}
-
-    # Validate student exists
-    student = session.get(Student, student_id)
-    if not student:
-        return {"status": "error", "message": "Student not found"}
-
-    # Convert metadata to JSON string if it's a dict
-    metadata_str = None
-    if metadata:
-        if isinstance(metadata, dict):
-            metadata_str = json.dumps(metadata)
-        else:
-            metadata_str = str(metadata)
-
-    # Create activity log entry
-    activity_log = ExamActivityLog(
-        exam_id=exam_id,
-        student_id=student_id,
-        attempt_id=attempt_id,
-        activity_type=activity_type,
-        activity_metadata=metadata_str,
-        severity=severity,
-        timestamp=datetime.utcnow()
-    )
-    session.add(activity_log)
-    session.commit()
-
-    return {"status": "success", "log_id": activity_log.id}
+# TODO: Anti-cheating activity logging endpoint disabled pending ExamActivityLog model implementation
+# @router.post("/essay/{exam_id}/log-activity")
+# async def log_essay_activity(
+#     exam_id: int,
+#     request: Request,
+#     session: Session = Depends(get_session)
+# ):
+#     """Log suspicious activities during essay exam taking for anti-cheating purposes."""
+#     data = await request.json()
+#     student_id = data.get("student_id")
+#     attempt_id = data.get("attempt_id")  # Required for essay attempts
+#     activity_type = data.get("activity_type")
+#     metadata = data.get("metadata")  # Optional JSON string or dict
+#     severity = data.get("severity", "low")  # low, medium, high
+#
+#     if not student_id or not activity_type:
+#         return {"status": "error", "message": "student_id and activity_type are required"}
+#
+#     # Validate exam exists
+#     exam = session.get(Exam, exam_id)
+#     if not exam:
+#         return {"status": "error", "message": "Exam not found"}
+#
+#     # Validate student exists
+#     student = session.get(Student, student_id)
+#     if not student:
+#         return {"status": "error", "message": "Student not found"}
+#
+#     # Convert metadata to JSON string if it's a dict
+#     metadata_str = None
+#     if metadata:
+#         if isinstance(metadata, dict):
+#             metadata_str = json.dumps(metadata)
+#         else:
+#             metadata_str = str(metadata)
+#
+#     # Create activity log entry
+#     # activity_log = ExamActivityLog(
+#     #     exam_id=exam_id,
+#     #     student_id=student_id,
+#     #     attempt_id=attempt_id,
+#     #     activity_type=activity_type,
+#     #     activity_metadata=metadata_str,
+#     #     severity=severity,
+#     #     timestamp=datetime.utcnow()
+#     # )
+#     # session.add(activity_log)
+#     # session.commit()
+#
+#     # return {"status": "success", "log_id": activity_log.id}

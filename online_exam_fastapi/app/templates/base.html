@@ -84,6 +84,9 @@
           <li><a href="/courses/">Courses</a></li>
           {% endif %}
           <li><a href="/essay">Essay</a></li>
+          {% if current_user and current_user.role == 'student' %}
+          <li><a href="/student/grades">My Grades</a></li>
+          {% endif %}
           {% if current_user and current_user.role == 'student' and current_user.student_id %}
           <li><a href="/exams/schedule/student/{{ current_user.student_id }}">Exam Schedule</a></li>
           {% endif %}
@@ -103,6 +106,7 @@
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
               {% if current_user.role == "student" %}
               <li><a class="dropdown-item" href="/courses/student">My Courses</a></li>
+              <li><a class="dropdown-item" href="/student/grades">My Grades</a></li>
               {% elif current_user.role == "lecturer" or current_user.role == "admin" %}
               <li><a class="dropdown-item" href="/courses/">My Courses</a></li>
               {% endif %}

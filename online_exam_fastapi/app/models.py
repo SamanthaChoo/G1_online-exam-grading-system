@@ -86,17 +86,12 @@ class ExamQuestion(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     exam_id: int = Field(foreign_key="exam.id")
-    question_text: str = Field(min_length=1, max_length=5000)
-    max_marks: int = Field(ge=1, le=1000)
-    allow_negative_marks: bool = Field(default=False)
+    question_text: str
+    max_marks: int
 
 
 class ExamAttempt(SQLModel, table=True):
     """Tracks an attempt by a student for an exam."""
-
-    __table_args__ = (
-        UniqueConstraint("exam_id", "student_id", "is_final", name="uq_exam_student_final_attempt"),
-    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     exam_id: int = Field(foreign_key="exam.id")
@@ -113,9 +108,8 @@ class EssayAnswer(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     attempt_id: int = Field(foreign_key="examattempt.id")
     question_id: int = Field(foreign_key="examquestion.id")
-    answer_text: Optional[str] = Field(default=None, max_length=50000)
-    marks_awarded: Optional[float] = None
-    grader_feedback: Optional[str] = Field(default=None, max_length=2000)
+    answer_text: Optional[str] = None
+    marks_awarded: Optional[int] = None
 
 
 class CourseLecturer(SQLModel, table=True):
@@ -194,18 +188,3 @@ class MCQResult(SQLModel, table=True):
     score: int
     total_questions: int
     graded_at: datetime
-
-
-# ===================== EXAM SECURITY & ANTI-CHEATING MODELS =====================
-
-class ExamActivityLog(SQLModel, table=True):
-    """Logs suspicious activities and anti-cheating events during exams."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    attempt_id: Optional[int] = Field(default=None, foreign_key="examattempt.id")
-    exam_id: int = Field(foreign_key="exam.id")
-    student_id: int = Field(foreign_key="student.id")
-    activity_type: str  # e.g., "tab_switch", "right_click", "copy_attempt", "paste_attempt", "devtools_attempt", "fullscreen_exit"
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    activity_metadata: Optional[str] = Field(default=None)  # JSON string for additional data (e.g., tab switch count, key pressed)
-    severity: str = Field(default="low")  # low, medium, high
