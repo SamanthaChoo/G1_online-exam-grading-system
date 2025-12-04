@@ -3,18 +3,7 @@
 {% block content %}
 <div class="container mt-4">
   <h2>{{ 'Edit MCQ' if mcq else 'Add New MCQ' }}</h2>
-
-  {% if errors %}
-  <div class="alert alert-danger">
-    <ul class="mb-0">
-      {% for e in errors %}
-      <li>{{ e }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-
-  <form method="post" action="{% if mcq %}/exams/mcq/{{ mcq.id }}/edit{% else %}/exams/{{ exam.id }}/mcq/new{% endif %}" onsubmit="return validateOptions();">
+  <form method="post" action="{% if mcq %}/exams/mcq/{{ mcq.id }}/edit{% else %}/exams/{{ exam.id }}/mcq/new{% endif %}">
     <div class="mb-3">
       <label for="question_text" class="form-label">Question</label>
       <textarea class="form-control" id="question_text" name="question_text" minlength="5" required oninput="this.value = this.value.trimStart()">{{ form.question_text if form else (mcq.question_text if mcq else '') }}</textarea>

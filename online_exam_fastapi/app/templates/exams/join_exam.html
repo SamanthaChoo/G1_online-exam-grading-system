@@ -7,6 +7,9 @@
     <input type="hidden" name="student_id" value="{{ student.id }}">
     <input type="hidden" name="exam_id" value="{{ exam.id }}">
     <div id="timer" class="alert alert-info">Time left: <span id="timeLeft"></span></div>
+    <div class="alert alert-warning" role="alert">
+      <strong>Exam Security:</strong> Anti-cheating measures are active. Right-click, copy/paste, and developer tools are disabled.
+    </div>
     {% for q in questions %}
       <div class="card mb-3">
         <div class="card-header">
@@ -43,6 +46,17 @@
     "question_ids": [{% for q in questions %}{{ q.id }}{% if not loop.last %}, {% endif %}{% endfor %}]
   }
 </script>
+<!-- Exam Context for Anti-Cheating Logging -->
+<script id="exam-context-data" type="application/json">
+  {
+    "exam_id": {{ exam.id|tojson }},
+    "student_id": {{ student.id|tojson }},
+    "attempt_id": null,
+    "log_endpoint": "/exams/{{ exam.id }}/log-activity"
+  }
+</script>
+<!-- Anti-Cheating Measures -->
+<script src="/static/myschool/assets/js/anti-cheating.js"></script>
 <script>
 // Timer and auto-save logic
 const mcqData = JSON.parse(document.getElementById('mcq-data').textContent);

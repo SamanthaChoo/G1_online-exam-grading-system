@@ -3,6 +3,9 @@
 <div class="container py-5">
   <div id="attempt-alert-placeholder"></div>
   <h2>Attempt #{{ attempt.id }} for {{ exam.title }}</h2>
+  <div class="alert alert-warning" role="alert">
+    <strong>Exam Security:</strong> Anti-cheating measures are active. Right-click, copy/paste, and developer tools are disabled.
+  </div>
   <div class="mb-3">
     <strong>Time left:</strong> <span id="countdown">--:--</span>
   </div>
@@ -16,6 +19,17 @@
     <button id="submit-btn" class="btn btn-primary">Submit Answers</button>
   </form>
 
+  <!-- Exam Context for Anti-Cheating Logging -->
+  <script id="exam-context-data" type="application/json">
+    {
+      "exam_id": {{ exam.id|tojson }},
+      "student_id": {{ attempt.student_id|tojson }},
+      "attempt_id": {{ attempt.id|tojson }},
+      "log_endpoint": "/essay/{{ exam.id }}/log-activity"
+    }
+  </script>
+  <!-- Anti-Cheating Measures -->
+  <script src="/static/myschool/assets/js/anti-cheating.js"></script>
   <script>
     (function(){
       // Configuration from template (serialize safely to JS using tojson)

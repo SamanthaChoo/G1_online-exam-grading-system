@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Activity Logs - {{ exam.title }}{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2>Activity Logs: {{ exam.title }}</h2>
+      <p class="text-muted">{{ exam.subject }}</p>
+    </div>
+    <div>
+      <a href="/exams/{{ exam.id }}/activity-analytics" class="btn btn-info">View Analytics</a>
+      <a href="/exams/{{ exam.id }}" class="btn btn-secondary">Back to Exam</a>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Total Activities</h5>
+          <h3 class="text-primary">{{ stats.total_activities }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">High Severity</h5>
+          <h3 class="text-danger">{{ stats.by_severity.high }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Medium Severity</h5>
+          <h3 class="text-warning">{{ stats.by_severity.medium }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Low Severity</h5>
+          <h3 class="text-info">{{ stats.by_severity.low }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="get" action="/exams/{{ exam.id }}/activity-logs" class="row g-3">
+        <div class="col-md-3">
+          <label for="student_id" class="form-label">Student</label>
+          <select name="student_id" id="student_id" class="form-select">
+            <option value="">All Students</option>
+            {% for student in students %}
+            <option value="{{ student.id }}" {% if filters.student_id == student.id %}selected{% endif %}>
+              {{ student.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="activity_type" class="form-label">Activity Type</label>
+          <select name="activity_type" id="activity_type" class="form-select">
+            <option value="">All Types</option>
+            {% for act_type in activity_types %}
+            <option value="{{ act_type }}" {% if filters.activity_type == act_type %}selected{% endif %}>
+              {{ act_type.replace('_', ' ').title() }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="severity" class="form-label">Severity</label>
+          <select name="severity" id="severity" class="form-select">
+            <option value="">All Severities</option>
+            {% for sev in severities %}
+            <option value="{{ sev }}" {% if filters.severity == sev %}selected{% endif %}>
+              {{ sev.title() }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">&nbsp;</label>
+          <div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="/exams/{{ exam.id }}/activity-logs" class="btn btn-secondary">Clear</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Activity Logs Table -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Activity Logs ({{ total_items }} total)</h5>
+    </div>
+    <div class="card-body">
+      {% if logs %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Student</th>
+              <th>Activity Type</th>
+              <th>Severity</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in logs %}
+            <tr>
+              <td>{{ item.log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+              <td>
+                {% if item.student %}
+                  {{ item.student.name }} ({{ item.student.matric_no }})
+                {% else %}
+                  Student ID: {{ item.log.student_id }}
+                {% endif %}
+              </td>
+              <td>
+                <code>{{ item.log.activity_type.replace('_', ' ') }}</code>
+              </td>
+              <td>
+                {% if item.log.severity == 'high' %}
+                  <span class="badge bg-danger">High</span>
+                {% elif item.log.severity == 'medium' %}
+                  <span class="badge bg-warning">Medium</span>
+                {% else %}
+                  <span class="badge bg-info">Low</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.metadata %}
+                  <small class="text-muted">
+                    {% for key, value in item.metadata.items() %}
+                      {{ key }}: {{ value }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                  </small>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if total_pages > 1 %}
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ current_page - 1 }}{% if filters.student_id %}&student_id={{ filters.student_id }}{% endif %}{% if filters.activity_type %}&activity_type={{ filters.activity_type }}{% endif %}{% if filters.severity %}&severity={{ filters.severity }}{% endif %}">Previous</a>
+          </li>
+          {% for p in range(1, total_pages + 1) %}
+          <li class="page-item {% if p == current_page %}active{% endif %}">
+            <a class="page-link" href="?page={{ p }}{% if filters.student_id %}&student_id={{ filters.student_id }}{% endif %}{% if filters.activity_type %}&activity_type={{ filters.activity_type }}{% endif %}{% if filters.severity %}&severity={{ filters.severity }}{% endif %}">{{ p }}</a>
+          </li>
+          {% endfor %}
+          <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ current_page + 1 }}{% if filters.student_id %}&student_id={{ filters.student_id }}{% endif %}{% if filters.activity_type %}&activity_type={{ filters.activity_type }}{% endif %}{% if filters.severity %}&severity={{ filters.severity }}{% endif %}">Next</a>
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
+      {% else %}
+      <div class="alert alert-info">No activity logs found.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

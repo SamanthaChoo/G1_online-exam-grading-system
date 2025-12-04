@@ -194,3 +194,18 @@ class MCQResult(SQLModel, table=True):
     score: int
     total_questions: int
     graded_at: datetime
+
+
+# ===================== EXAM SECURITY & ANTI-CHEATING MODELS =====================
+
+class ExamActivityLog(SQLModel, table=True):
+    """Logs suspicious activities and anti-cheating events during exams."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: Optional[int] = Field(default=None, foreign_key="examattempt.id")
+    exam_id: int = Field(foreign_key="exam.id")
+    student_id: int = Field(foreign_key="student.id")
+    activity_type: str  # e.g., "tab_switch", "right_click", "copy_attempt", "paste_attempt", "devtools_attempt", "fullscreen_exit"
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    activity_metadata: Optional[str] = Field(default=None)  # JSON string for additional data (e.g., tab switch count, key pressed)
+    severity: str = Field(default="low")  # low, medium, high

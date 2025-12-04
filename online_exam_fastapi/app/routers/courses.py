@@ -4,7 +4,7 @@ from typing import Optional
 import re
 
 from app.database import get_session
-from app.deps import require_role
+from app.deps import require_role, get_current_user
 from app.models import Course, CourseLecturer, Enrollment, Exam, Student, User
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
@@ -99,6 +99,101 @@ def list_courses(
         "current_user": current_user,
     }
     return templates.TemplateResponse("courses/list.html", context)
+
+
+@router.get("/student")
+def student_course_list(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_current_user),
+):
+    """List courses that the current student is enrolled in."""
+    # Verify user is logged in
+    if not current_user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/auth/login", status_code=303)
+    
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="This page is only accessible to students")
+    
+    # Get student_id from user
+    student_id = current_user.student_id
+    if student_id is None:
+        # Try to find student by user_id
+        student = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
+        student_id = student.id if student else None
+    
+    if student_id is None:
+        # Student record not found
+        context = {
+            "request": request,
+            "current_user": current_user,
+            "error": "No student record found. Please contact administrator.",
+            "courses": [],
+            "enrollments": [],
+            "exam_counts": {},
+            "course_lecturers": {},
+            "student": None,
+        }
+        return templates.TemplateResponse("courses/student_list.html", context)
+    
+    # Get all enrollments for this student
+    enrollments = session.exec(
+        select(Enrollment).where(Enrollment.student_id == student_id)
+    ).all()
+    
+    # Get course IDs from enrollments
+    course_ids = [enrollment.course_id for enrollment in enrollments]
+    
+    # Get courses
+    courses = []
+    if course_ids:
+        courses = session.exec(
+            select(Course).where(Course.id.in_(course_ids))
+        ).all()
+    
+    # Get exam counts for each course
+    exam_counts = {}
+    if course_ids:
+        exam_counts = dict(
+            session.exec(
+                select(Exam.course_id, func.count(Exam.id))
+                .where(Exam.course_id.in_(course_ids))
+                .group_by(Exam.course_id)
+            ).all()
+        )
+    
+    # Get lecturers for each course
+    course_lecturers_map = {}
+    if course_ids:
+        course_lecturers = session.exec(
+            select(CourseLecturer).where(CourseLecturer.course_id.in_(course_ids))
+        ).all()
+        for cl in course_lecturers:
+            if cl.course_id not in course_lecturers_map:
+                course_lecturers_map[cl.course_id] = []
+            lecturer = session.get(User, cl.lecturer_id)
+            if lecturer:
+                course_lecturers_map[cl.course_id].append(lecturer)
+    
+    # Sort courses by name
+    courses_sorted = sorted(courses, key=lambda c: c.name)
+    
+    # Get student info
+    student = session.get(Student, student_id)
+    
+    context = {
+        "request": request,
+        "current_user": current_user,
+        "courses": courses_sorted,
+        "enrollments": enrollments,
+        "exam_counts": exam_counts,
+        "course_lecturers": course_lecturers_map,
+        "student": student,
+    }
+    return templates.TemplateResponse("courses/student_list.html", context)
 
 
 @router.get("/new")
