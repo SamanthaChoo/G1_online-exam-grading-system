@@ -7,8 +7,8 @@
   {% if errors %}
   <div class="alert alert-danger">
     <ul class="mb-0">
-      {% for field, message in errors.items() %}
-      <li>{{ message }}</li>
+      {% for e in errors %}
+      <li>{{ e }}</li>
       {% endfor %}
     </ul>
   </div>

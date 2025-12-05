@@ -63,10 +63,26 @@
 
       <nav id="navmenu" class="navmenu">
         <ul>
-          {% if current_user and (current_user.role == "lecturer" or current_user.role == "admin") %}
+          {% if current_user and current_user.role == "admin" %}
           <li><a href="/courses/">Courses</a></li>
           <li><a href="/exams/new">New Exam</a></li>
           <li><a href="/essay">Essay</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mcqDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              MCQ
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="mcqDropdown">
+              <li><a class="dropdown-item" href="/exams/mcq/menu">MCQ Questions (CRUD)</a></li>
+              <li><a class="dropdown-item" href="#" onclick="alert('Automatic MCQ grading is performed when students submit or time expires. Scores are stored automatically.'); return false;">Automatic MCQ Grading</a></li>
+            </ul>
+          </li>
+          <li><a href="/admin/performance-report">Performance Report</a></li>
+          <li><a href="/docs">API Docs</a></li>
+          {% elif current_user and current_user.role == "lecturer" %}
+          <li><a href="/courses/">Courses</a></li>
+          <li><a href="/exams/new">New Exam</a></li>
+          <li><a href="/essay">Essay</a></li>
+          <li><a href="/lecturer/results">View Results</a></li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="mcqDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               MCQ
@@ -84,6 +100,9 @@
           <li><a href="/courses/">Courses</a></li>
           {% endif %}
           <li><a href="/essay">Essay</a></li>
+          {% if current_user and current_user.role == 'student' %}
+          <li><a href="/grades">View Grades</a></li>
+          {% endif %}
           {% if current_user and current_user.role == 'student' and current_user.student_id %}
           <li><a href="/exams/schedule/student/{{ current_user.student_id }}">Exam Schedule</a></li>
           {% endif %}
@@ -103,11 +122,16 @@
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
               {% if current_user.role == "student" %}
               <li><a class="dropdown-item" href="/courses/student">My Courses</a></li>
+              <li><a class="dropdown-item" href="/grades">View Grades</a></li>
               {% elif current_user.role == "lecturer" or current_user.role == "admin" %}
               <li><a class="dropdown-item" href="/courses/">My Courses</a></li>
+              {% if current_user.role == "lecturer" %}
+              <li><a class="dropdown-item" href="/lecturer/results">View Results</a></li>
+              {% endif %}
               {% endif %}
               {% if current_user.role == "admin" %}
               <li><a class="dropdown-item" href="/admin/users">User Management</a></li>
+              <li><a class="dropdown-item" href="/admin/performance-report">Performance Report</a></li>
               {% endif %}
               <li>
                 <hr class="dropdown-divider">

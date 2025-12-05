@@ -3,8 +3,16 @@
 <div class="container py-5">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <h2 class="h4 mb-0">Grade Attempt #{{ attempt.id }} — {{ exam.title }}</h2>
-      <small class="text-muted">Student: {{ student.name if student else ('ID ' ~ attempt.student_id) }} &nbsp; Status: {{ attempt.status }}</small>
+      {% if is_graded %}
+        <h2 class="h4 mb-0">Review Graded Attempt #{{ attempt.id }} — {{ exam.title }}</h2>
+      {% else %}
+        <h2 class="h4 mb-0">Grade Attempt #{{ attempt.id }} — {{ exam.title }}</h2>
+      {% endif %}
+      <small class="text-muted">Student: {{ student.name if student else ('ID ' ~ attempt.student_id) }} &nbsp; Status: {{ attempt.status }}
+        {% if is_graded %}
+          &nbsp; <span class="badge bg-success">Status: Graded (Read-only)</span>
+        {% endif %}
+      </small>
     </div>
     {% if attempt and attempt.started_at and attempt.status != 'submitted' %}
       <div>
@@ -13,33 +21,55 @@
     {% endif %}
   </div>
 
-  <form method="post">
-    {% set total_possible = 0 %}
-    {% set total_current = 0 %}
+  {% set total_possible = 0 %}
+  {% set total_current = 0 %}
+  {% for q in questions %}
+    {% set total_possible = total_possible + (q.max_marks or 0) %}
+    {% set current_marks = (answers_map.get(q.id).marks_awarded if answers_map.get(q.id) and answers_map.get(q.id).marks_awarded is not none else 0) %}
+    {% set total_current = total_current + current_marks %}
+  {% endfor %}
+
+  <!-- Final Score Summary (Always Visible) -->
+  <div class="card mb-4 border-success" {% if is_graded %}style="background-color:#f0fff4;"{% endif %}>
+    <div class="card-body text-center">
+      <h4>Final Total Score</h4>
+      <h1 class="display-4 text-success">{{ total_current }} / {{ total_possible }}</h1>
+      {% if is_graded %}
+        <small class="text-muted">Graded on {{ attempt.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if attempt.submitted_at else 'N/A' }}</small>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" {% if is_graded %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
     {% for q in questions %}
-      {% set total_possible = total_possible + (q.max_marks or 0) %}
       {% set current_marks = (answers_map.get(q.id).marks_awarded if answers_map.get(q.id) and answers_map.get(q.id).marks_awarded is not none else 0) %}
-      {% set total_current = total_current + current_marks %}
       <div class="card mb-3">
         <div class="card-body">
           <div class="d-flex justify-content-between">
             <div>
               <label class="form-label"><strong>Q{{ loop.index }}:</strong> {{ q.question_text }}</label>
               <p class="small text-muted">Answer: {{ answers_map.get(q.id).answer_text if answers_map.get(q.id) }}</p>
+              {% if is_graded and answers_map.get(q.id) and answers_map.get(q.id).grader_feedback %}
+                <div class="mt-2 p-2 bg-light rounded">
+                  <small class="text-muted"><strong>Feedback:</strong></small>
+                  <p class="mb-0">{{ answers_map.get(q.id).grader_feedback }}</p>
+                </div>
+              {% endif %}
             </div>
             <div style="min-width:180px; text-align:right;">
               <div class="mb-2 small text-muted">Max: {{ q.max_marks or 0 }}</div>
-              <input type="number" min="0" max="{{ q.max_marks or 0 }}" name="score_{{ q.id }}" class="form-control" value="{{ current_marks }}" />
+              <input type="number" min="0" max="{{ q.max_marks or 0 }}" name="score_{{ q.id }}" class="form-control" value="{{ current_marks }}" {% if is_graded %}readonly disabled{% endif %} />
             </div>
           </div>
         </div>
       </div>
     {% endfor %}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div><strong>Current total:</strong> {{ total_current }} / {{ total_possible }}</div>
-      <button class="btn btn-lg btn-primary">Save Scores</button>
-    </div>
+    {% if not is_graded %}
+      <div class="d-flex justify-content-end mb-4">
+        <button type="submit" class="btn btn-lg btn-primary">Save Scores</button>
+      </div>
+    {% endif %}
   </form>
 
   {% if attempt and attempt.started_at and attempt.status != 'submitted' %}

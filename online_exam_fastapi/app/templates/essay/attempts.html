@@ -21,7 +21,11 @@
               <div class="small text-muted">{{ item.graded_count }} / {{ item.total_questions }} questions</div>
               <div class="mt-2"><strong>Score:</strong> {{ item.score }} / {{ item.total_possible }}</div>
               <div class="mt-2">
-                <a href="/essay/{{ exam.id }}/grade/{{ a.id }}" class="btn btn-sm btn-primary">Grade</a>
+                {% if item.graded_count == item.total_questions %}
+                  <a href="/essay/{{ exam.id }}/grade/{{ a.id }}" class="btn btn-sm btn-success">Review Graded Attempt</a>
+                {% else %}
+                  <a href="/essay/{{ exam.id }}/grade/{{ a.id }}" class="btn btn-sm btn-primary">Grade</a>
+                {% endif %}
               </div>
             {% else %}
               <!-- Student view: hide grading controls entirely -->

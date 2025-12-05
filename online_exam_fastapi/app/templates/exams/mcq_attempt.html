@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <!-- Timer and exam header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h2>{{ exam.title }} - MCQ Exam</h2>
+      <p class="text-muted">Subject: {{ exam.subject }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <div class="alert alert-warning d-inline-block">
+        <strong>Time remaining:</strong> <span id="countdown" style="font-size: 1.3em; font-weight: bold;">--:--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security notice -->
+  <div class="alert alert-info" role="alert">
+    <strong>Exam Mode:</strong> Your responses are automatically saved as you select answers. The exam will auto-submit when time expires.
+  </div>
+
+  <!-- MCQ Form -->
+  <form id="mcq-form" method="post" action="/exams/{{ exam.id }}/mcq/submit">
+    {% for question in questions %}
+    <div class="card mb-4 border-left border-primary">
+      <div class="card-header bg-light">
+        <strong>Question {{ loop.index }} of {{ questions|length }}</strong>
+      </div>
+      <div class="card-body">
+        <p class="card-text">{{ question.question_text }}</p>
+        
+        <div class="ms-3">
+          <div class="form-check mb-3">
+            <input 
+              class="form-check-input" 
+              type="radio" 
+              name="answer_{{ question.id }}" 
+              id="q{{ question.id }}_a" 
+              value="A"
+              {% if existing_answers.get(question.id) == 'A' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="q{{ question.id }}_a">
+              <strong>A.</strong> {{ question.option_a }}
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input 
+              class="form-check-input" 
+              type="radio" 
+              name="answer_{{ question.id }}" 
+              id="q{{ question.id }}_b" 
+              value="B"
+              {% if existing_answers.get(question.id) == 'B' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="q{{ question.id }}_b">
+              <strong>B.</strong> {{ question.option_b }}
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input 
+              class="form-check-input" 
+              type="radio" 
+              name="answer_{{ question.id }}" 
+              id="q{{ question.id }}_c" 
+              value="C"
+              {% if existing_answers.get(question.id) == 'C' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="q{{ question.id }}_c">
+              <strong>C.</strong> {{ question.option_c }}
+            </label>
+          </div>
+
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="radio" 
+              name="answer_{{ question.id }}" 
+              id="q{{ question.id }}_d" 
+              value="D"
+              {% if existing_answers.get(question.id) == 'D' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="q{{ question.id }}_d">
+              <strong>D.</strong> {{ question.option_d }}
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="d-grid gap-2 d-sm-flex justify-content-center mt-5">
+      <button id="submit-btn" type="submit" class="btn btn-primary btn-lg">
+        Submit Exam
+      </button>
+    </div>
+  </form>
+
+  <!-- Timer and Auto-Submit Logic (JavaScript) -->
+  <script>
+    // IIFE to avoid global scope pollution
+    (function() {
+      // Variables initialized from template context below
+      // noinspection JSUnresolvedVariable
+      var examIdVal;
+      var durationVal;
+      var nowMsVal;
+      
+      // Initialize from template variables (eslint-disable-next-line)
+      examIdVal = parseInt('{{ exam.id }}');
+      durationVal = parseInt('{{ exam.duration_minutes or 60 }}');
+      nowMsVal = parseInt('{{ now_ms }}');
+
+      // DOM elements
+      var submitBtn = document.getElementById('submit-btn');
+      var form = document.getElementById('mcq-form');
+      var countdownEl = document.getElementById('countdown');
+      
+      // Storage key for tracking submissions
+      var storageKey = 'mcq_submitted_' + examIdVal;
+      
+      // Calculate end time
+      var startTime = new Date(nowMsVal);
+      var endTime = new Date(startTime.getTime() + durationVal * 60 * 1000);
+      var timerInterval = null;
+
+      // Prevent double submit if already submitted
+      if (localStorage.getItem(storageKey)) {
+        submitBtn.textContent = 'Already Submitted';
+        submitBtn.disabled = true;
+        var inputs = form.querySelectorAll('input');
+        for (var i = 0; i < inputs.length; i++) {
+          inputs[i].disabled = true;
+        }
+      }
+
+      // Form submit confirmation
+      form.addEventListener('submit', function(ev) {
+        var ok = confirm('Are you sure you want to submit your answers? Once submitted, you cannot change them.');
+        if (!ok) {
+          ev.preventDefault();
+          return;
+        }
+        try { 
+          localStorage.setItem(storageKey, '1'); 
+        } catch (e) { 
+          // ignore localStorage errors
+        }
+        submitBtn.textContent = 'Submitting...';
+        submitBtn.disabled = true;
+      });
+
+      // Update countdown timer
+      function updateCountdown() {
+        var now = new Date();
+        var diff = Math.max(0, Math.floor((endTime - now) / 1000));
+        var mins = Math.floor(diff / 60).toString();
+        var secs = (diff % 60).toString();
+        
+        // Pad with zeros
+        mins = mins.length === 1 ? '0' + mins : mins;
+        secs = secs.length === 1 ? '0' + secs : secs;
+        
+        if (countdownEl) {
+          countdownEl.textContent = mins + ':' + secs;
+          
+          // Change color at 5 minutes remaining
+          if (diff <= 300) {
+            countdownEl.parentElement.classList.remove('alert-warning');
+            countdownEl.parentElement.classList.add('alert-danger');
+          }
+        }
+
+        // Auto-submit when time expires
+        if (diff <= 0) {
+          clearInterval(timerInterval);
+          doAutoSubmit();
+        }
+      }
+
+      // Start countdown timer
+      timerInterval = setInterval(updateCountdown, 1000);
+      updateCountdown();
+
+      // Auto-submit function when time expires
+      function doAutoSubmit() {
+        // Prevent multiple auto-submits
+        if (localStorage.getItem(storageKey)) {
+          return;
+        }
+        try {
+          localStorage.setItem(storageKey, '1');
+        } catch (e) {
+          // ignore
+        }
+
+        // Disable form inputs
+        var allInputs = form.querySelectorAll('input, button');
+        for (var i = 0; i < allInputs.length; i++) {
+          allInputs[i].disabled = true;
+        }
+        submitBtn.textContent = 'Time expired - Auto-submitting...';
+
+        try {
+          // Submit form
+          form.submit();
+        } catch (err) {
+          // Fallback redirect if submit fails
+          window.location.href = '/exams/' + examIdVal + '/mcq/result';
+        }
+      }
+
+    })();
+  </script>
+</div>
+{% endblock %}

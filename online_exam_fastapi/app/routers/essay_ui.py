@@ -1,5 +1,5 @@
 from app.database import get_session
-from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion, Student, User, Enrollment, ExamActivityLog
+from app.models import EssayAnswer, Exam, ExamAttempt, ExamQuestion, Student, User, Enrollment
 from app.services.essay_service import (
     add_question,
     grade_attempt,
@@ -105,7 +105,10 @@ def create_question(
     max_marks: int = Form(...),
     session: Session = Depends(get_session),
 ):
-    add_question(session, exam_id, question_text, max_marks)
+    try:
+        add_question(session, exam_id, question_text, max_marks)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
 
 
@@ -352,6 +355,9 @@ def grade_form(
     if attempt and attempt.student_id is not None:
         student = session.get(Student, attempt.student_id)
 
+    # Check if all answers are graded (all have marks_awarded set)
+    is_graded = all(a.marks_awarded is not None for a in answers) if answers else False
+
     return templates.TemplateResponse(
         "essay/grade.html",
         {
@@ -361,6 +367,7 @@ def grade_form(
             "questions": questions,
             "answers_map": answers_map,
             "student": student,
+            "is_graded": is_graded,
         },
     )
 
@@ -375,6 +382,7 @@ async def grade_submit(
     form = await request.form()
     # collect scores
     scores = []
+    feedback_list = []
     for key, value in form.items():
         if key.startswith("score_"):
             try:
@@ -382,11 +390,22 @@ async def grade_submit(
             except Exception:
                 continue
             try:
-                marks = int(value)
+                marks = float(value)
             except Exception:
                 marks = 0
             scores.append({"question_id": qid, "marks": marks})
-    result = grade_attempt(session, attempt_id, scores)
+        elif key.startswith("feedback_"):
+            try:
+                qid = int(key.split("_")[1])
+            except Exception:
+                continue
+            feedback_list.append({"question_id": qid, "feedback": value})
+    
+    try:
+        result = grade_attempt(session, attempt_id, scores, feedback_list)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
     # Build per-question breakdown to show on result page
     qlist = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
     answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)).all()
@@ -399,7 +418,10 @@ async def grade_submit(
                 "question_id": q.id,
                 "question_text": q.question_text,
                 "max_marks": q.max_marks,
-                "marks_awarded": (ans.marks_awarded if ans and ans.marks_awarded is not None else 0),
+                "marks_awarded": (
+                    ans.marks_awarded if ans and ans.marks_awarded is not None else 0
+                ),
+                "feedback": ans.grader_feedback if ans else None,
             }
         )
 
@@ -415,48 +437,53 @@ async def grade_submit(
     )
 
 
-@router.post("/essay/{exam_id}/log-activity")
-async def log_essay_activity(exam_id: int, request: Request, session: Session = Depends(get_session)):
-    """Log suspicious activities during essay exam taking for anti-cheating purposes."""
-    data = await request.json()
-    student_id = data.get("student_id")
-    attempt_id = data.get("attempt_id")  # Required for essay attempts
-    activity_type = data.get("activity_type")
-    metadata = data.get("metadata")  # Optional JSON string or dict
-    severity = data.get("severity", "low")  # low, medium, high
-
-    if not student_id or not activity_type:
-        return {"status": "error", "message": "student_id and activity_type are required"}
-
-    # Validate exam exists
-    exam = session.get(Exam, exam_id)
-    if not exam:
-        return {"status": "error", "message": "Exam not found"}
-
-    # Validate student exists
-    student = session.get(Student, student_id)
-    if not student:
-        return {"status": "error", "message": "Student not found"}
-
-    # Convert metadata to JSON string if it's a dict
-    metadata_str = None
-    if metadata:
-        if isinstance(metadata, dict):
-            metadata_str = json.dumps(metadata)
-        else:
-            metadata_str = str(metadata)
-
-    # Create activity log entry
-    activity_log = ExamActivityLog(
-        exam_id=exam_id,
-        student_id=student_id,
-        attempt_id=attempt_id,
-        activity_type=activity_type,
-        activity_metadata=metadata_str,
-        severity=severity,
-        timestamp=datetime.utcnow(),
-    )
-    session.add(activity_log)
-    session.commit()
-
-    return {"status": "success", "log_id": activity_log.id}
+# TODO: Anti-cheating activity logging endpoint disabled pending ExamActivityLog model implementation
+# @router.post("/essay/{exam_id}/log-activity")
+# async def log_essay_activity(
+#     exam_id: int,
+#     request: Request,
+#     session: Session = Depends(get_session)
+# ):
+#     """Log suspicious activities during essay exam taking for anti-cheating purposes."""
+#     data = await request.json()
+#     student_id = data.get("student_id")
+#     attempt_id = data.get("attempt_id")  # Required for essay attempts
+#     activity_type = data.get("activity_type")
+#     metadata = data.get("metadata")  # Optional JSON string or dict
+#     severity = data.get("severity", "low")  # low, medium, high
+#
+#     if not student_id or not activity_type:
+#         return {"status": "error", "message": "student_id and activity_type are required"}
+#
+#     # Validate exam exists
+#     exam = session.get(Exam, exam_id)
+#     if not exam:
+#         return {"status": "error", "message": "Exam not found"}
+#
+#     # Validate student exists
+#     student = session.get(Student, student_id)
+#     if not student:
+#         return {"status": "error", "message": "Student not found"}
+#
+#     # Convert metadata to JSON string if it's a dict
+#     metadata_str = None
+#     if metadata:
+#         if isinstance(metadata, dict):
+#             metadata_str = json.dumps(metadata)
+#         else:
+#             metadata_str = str(metadata)
+#
+#     # Create activity log entry
+#     # activity_log = ExamActivityLog(
+#     #     exam_id=exam_id,
+#     #     student_id=student_id,
+#     #     attempt_id=attempt_id,
+#     #     activity_type=activity_type,
+#     #     activity_metadata=metadata_str,
+#     #     severity=severity,
+#     #     timestamp=datetime.utcnow()
+#     # )
+#     # session.add(activity_log)
+#     # session.commit()
+#
+#     # return {"status": "success", "log_id": activity_log.id}

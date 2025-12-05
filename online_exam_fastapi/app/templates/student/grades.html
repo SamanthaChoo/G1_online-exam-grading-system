@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">My Grades & Results</h1>
+
+  {% if student %}
+  <div class="alert alert-info">
+    <strong>Student:</strong> {{ student.name }} ({{ student.matric_no }})
+  </div>
+  {% endif %}
+
+  <!-- Sorting controls -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <form method="get" class="row g-2">
+            <div class="col-auto">
+              <label for="sort" class="form-label">Sort by:</label>
+              <select name="sort" id="sort" class="form-select" onchange="this.form.submit()">
+                <option value="date" {% if sort == "date" %}selected{% endif %}>Date (Latest)</option>
+                <option value="exam" {% if sort == "exam" %}selected{% endif %}>Exam Name (A-Z)</option>
+                <option value="score" {% if sort == "score" %}selected{% endif %}>Score (Highest)</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <label for="direction" class="form-label">Order:</label>
+              <select name="direction" id="direction" class="form-select" onchange="this.form.submit()">
+                <option value="desc" {% if direction == "desc" %}selected{% endif %}>Descending</option>
+                <option value="asc" {% if direction == "asc" %}selected{% endif %}>Ascending</option>
+              </select>
+            </div>
+            {% if page > 1 %}
+            <input type="hidden" name="page" value="{{ page }}">
+            {% endif %}
+          </form>
+        </div>
+        <div class="col-md-4 text-end">
+          <small class="text-muted">Total Results: {{ total_results }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results table -->
+  {% if results %}
+  <div class="table-responsive">
+    <table class="table table-striped table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>Exam Name</th>
+          <th>Type</th>
+          <th>Score</th>
+          <th>Percentage</th>
+          <th>Status</th>
+          <th>Date Submitted</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for result in results %}
+        <tr>
+          <td>
+            <strong>{{ result.exam.title }}</strong>
+            <br>
+            <small class="text-muted">{{ result.exam.subject }}</small>
+          </td>
+          <td>
+            {% if result.type == "Essay" %}
+              <span class="badge bg-primary">Essay</span>
+            {% elif result.type == "MCQ" %}
+              <span class="badge bg-success">MCQ</span>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ result.score }}/{{ result.total }}</strong>
+          </td>
+          <td>
+            {% set score_badge = "bg-success" if result.percentage >= 70 else "bg-warning" if result.percentage >= 50 else "bg-danger" %}
+            <span class="badge {{ score_badge }}">{{ "%.1f"|format(result.percentage) }}%</span>
+          </td>
+          <td>
+            {% if result.is_published %}
+              <span class="badge bg-info">Published</span>
+            {% else %}
+              <span class="badge bg-secondary">Not Published</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if result.submitted_at %}
+              {{ result.submitted_at }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            <a href="/exams/{{ result.exam.id }}" class="btn btn-sm btn-primary">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+      {% if current_page > 1 %}
+      <li class="page-item">
+        <a class="page-link" href="?sort={{ sort }}&direction={{ direction }}&page=1">First</a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?sort={{ sort }}&direction={{ direction }}&page={{ current_page - 1 }}">Previous</a>
+      </li>
+      {% endif %}
+
+      {% for p in range(1, total_pages + 1) %}
+        {% if p >= current_page - 2 and p <= current_page + 2 %}
+          {% if p == current_page %}
+          <li class="page-item active">
+            <span class="page-link">{{ p }}</span>
+          </li>
+          {% else %}
+          <li class="page-item">
+            <a class="page-link" href="?sort={{ sort }}&direction={{ direction }}&page={{ p }}">{{ p }}</a>
+          </li>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+
+      {% if current_page < total_pages %}
+      <li class="page-item">
+        <a class="page-link" href="?sort={{ sort }}&direction={{ direction }}&page={{ current_page + 1 }}">Next</a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?sort={{ sort }}&direction={{ direction }}&page={{ total_pages }}">Last</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="alert alert-info">
+    <p>You have not completed any exams yet. Once you submit exam answers, your results will appear here.</p>
+  </div>
+  {% endif %}
+
+  <div class="mt-4">
+    <a href="/" class="btn btn-secondary">Back to Home</a>
+  </div>
+</div>
+{% endblock %}

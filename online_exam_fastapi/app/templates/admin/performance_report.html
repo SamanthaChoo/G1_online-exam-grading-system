@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mb-4">Student Performance Summary Report</h2>
+      
+      <!-- Report Header -->
+      <div class="card mb-4 border-primary">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p class="mb-2"><strong>Report Generated:</strong> {{ generated_at }}</p>
+              <p class="mb-0"><strong>Total Subjects:</strong> {{ total_subjects }}</p>
+            </div>
+            <div class="col-md-6 text-end">
+              <button class="btn btn-primary" onclick="window.location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Report
+              </button>
+              {% if report_data %}
+              <button class="btn btn-secondary" onclick="window.print()">
+                <i class="bi bi-printer"></i> Print
+              </button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if report_data %}
+      <!-- Performance Data Table -->
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th>Subject</th>
+              <th>Exam Type(s)</th>
+              <th>Average Score</th>
+              <th>Pass Rate (%)</th>
+              <th>Total Students</th>
+              <th>Passed</th>
+              <th>Highest Score</th>
+              <th>Lowest Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in report_data %}
+            <tr>
+              <td><strong>{{ item.subject }}</strong></td>
+              <td>
+                <small>
+                  {% for exam_type in item.exam_types.split(', ') %}
+                    <span class="badge bg-info">{{ exam_type }}</span>
+                  {% endfor %}
+                </small>
+              </td>
+              <td>
+                <strong>{{ item.average_score }}</strong>
+              </td>
+              <td>
+                {% set pass_rate = item.pass_rate|float %}
+                {% if pass_rate >= 80 %}
+                  <span class="badge bg-success">{{ item.pass_rate }}%</span>
+                {% elif pass_rate >= 60 %}
+                  <span class="badge bg-warning text-dark">{{ item.pass_rate }}%</span>
+                {% else %}
+                  <span class="badge bg-danger">{{ item.pass_rate }}%</span>
+                {% endif %}
+              </td>
+              <td>{{ item.total_students }}</td>
+              <td>
+                <strong>{{ item.passed_count }}</strong> / {{ item.total_students }}
+              </td>
+              <td>{{ item.highest_score }}</td>
+              <td>{{ item.lowest_score }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Summary Statistics -->
+      <div class="row mt-4">
+        <div class="col-md-3">
+          <div class="card bg-light">
+            <div class="card-body text-center">
+              <h6 class="card-title">Total Subjects</h6>
+              <h3 class="card-text text-primary">{{ total_subjects }}</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-light">
+            <div class="card-body text-center">
+              <h6 class="card-title">Total Student Attempts</h6>
+              <h3 class="card-text text-info">
+                {% set total_attempts = report_data | map(attribute='total_students') | sum %}
+                {{ total_attempts }}
+              </h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-light">
+            <div class="card-body text-center">
+              <h6 class="card-title">Total Passed</h6>
+              <h3 class="card-text text-success">
+                {% set total_passed = report_data | map(attribute='passed_count') | sum %}
+                {{ total_passed }}
+              </h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-light">
+            <div class="card-body text-center">
+              <h6 class="card-title">Overall Pass Rate</h6>
+              <h3 class="card-text text-primary">
+                {% set total_attempts = report_data | map(attribute='total_students') | sum %}
+                {% set total_passed = report_data | map(attribute='passed_count') | sum %}
+                {% if total_attempts > 0 %}
+                  {{ "%.1f"|format((total_passed / total_attempts * 100)) }}%
+                {% else %}
+                  N/A
+                {% endif %}
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% else %}
+      <!-- No Data Available Message -->
+      <div class="alert alert-info text-center py-5" role="alert">
+        <i class="bi bi-info-circle me-2" style="font-size: 2rem;"></i>
+        <h5>No performance data available.</h5>
+        <p class="mb-0">There are no completed and graded exams in the system yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Print Styles -->
+<style media="print">
+  * {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .container {
+    margin: 0 !important;
+    padding: 15mm !important;
+    max-width: 100%;
+  }
+  
+  .py-5 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .row {
+    margin: 0 !important;
+  }
+  
+  .mb-4 {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .mb-2 {
+    margin-bottom: 0.25rem !important;
+  }
+  
+  .mt-4 {
+    margin-top: 0.5rem !important;
+  }
+  
+  .card {
+    page-break-inside: avoid;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .table {
+    margin-bottom: 0.5rem !important;
+    font-size: 0.85rem;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+  }
+  
+  .btn, .card-body button, .header, nav, footer {
+    display: none !important;
+  }
+  
+  h2 {
+    margin: 0 0 0.5rem 0 !important;
+    font-size: 1.5rem;
+    page-break-after: avoid;
+  }
+  
+  h6 {
+    margin: 0 !important;
+    font-size: 0.9rem;
+  }
+  
+  h3 {
+    margin: 0 !important;
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Start MCQ Exam</h5>
+        </div>
+        <div class="card-body">
+          <h4 class="card-title">{{ exam.title }}</h4>
+          <p class="card-text text-muted">{{ exam.subject }}</p>
+
+          <div class="alert alert-info">
+            <strong>Exam Details:</strong>
+            <ul class="mb-0 mt-2">
+              <li>Duration: <strong>{{ exam.duration_minutes }} minutes</strong></li>
+              {% if exam.instructions %}
+              <li>Instructions: <strong>{{ exam.instructions }}</strong></li>
+              {% endif %}
+            </ul>
+          </div>
+
+          <form method="post">
+            <p>
+              Once you start this exam, the timer will begin counting down. You must submit all answers before time expires or the exam will auto-submit.
+            </p>
+            <p class="text-muted small">
+              Make sure you have a stable internet connection and a quiet environment before proceeding.
+            </p>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-lg">
+                Start Exam
+              </button>
+              <a href="/exams/{{ exam.id }}" class="btn btn-secondary">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
