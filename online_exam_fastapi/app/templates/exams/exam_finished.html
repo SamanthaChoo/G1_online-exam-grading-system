@@ -11,6 +11,7 @@
     <div class="card mt-3">
       <div class="card-body">
         <h4 class="card-title">Score: {{ score }} / {{ total }}</h4>
+        {% if total > 0 %}
         <h5 class="card-subtitle mb-2 text-muted">Percentage: {{ "%.1f"|format((score / total * 100)) }}%</h5>
         {% set percentage = (score / total * 100) %}
         <div class="progress" style="height: 30px;">
@@ -23,6 +24,9 @@
             {{ "%.1f"|format(percentage) }}%
           </div>
         </div>
+        {% else %}
+        <h5 class="card-subtitle mb-2 text-muted">No questions available</h5>
+        {% endif %}
       </div>
     </div>
     {% endif %}
