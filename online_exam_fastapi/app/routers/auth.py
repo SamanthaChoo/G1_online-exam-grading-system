@@ -17,23 +17,15 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/login")
-def login_form(
-    request: Request, current_user: Optional[User] = Depends(get_current_user)
-):
+def login_form(request: Request, current_user: Optional[User] = Depends(get_current_user)):
     if current_user:
         # Already logged in – send to a sensible default depending on role
         if current_user.role == "admin":
-            return RedirectResponse(
-                url="/admin/users", status_code=status.HTTP_303_SEE_OTHER
-            )
+            return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
         elif current_user.role == "lecturer":
-            return RedirectResponse(
-                url="/courses/", status_code=status.HTTP_303_SEE_OTHER
-            )
+            return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
         else:  # student
-            return RedirectResponse(
-                url="/courses/student", status_code=status.HTTP_303_SEE_OTHER
-            )
+            return RedirectResponse(url="/courses/student", status_code=status.HTTP_303_SEE_OTHER)
 
     context = {"request": request, "form": None, "error": None}
     return templates.TemplateResponse("auth/login.html", context)
@@ -74,11 +66,7 @@ def login(
             staff_id_clean = staff_id.strip()
             form_data["staff_id"] = staff_id
             # Find lecturer by staff_id
-            user = session.exec(
-                select(User).where(
-                    User.staff_id == staff_id_clean, User.role == "lecturer"
-                )
-            ).first()
+            user = session.exec(select(User).where(User.staff_id == staff_id_clean, User.role == "lecturer")).first()
             if not user:
                 error = "Invalid Staff ID or password. Please check your Staff ID and try again."
             elif user and user.role != "lecturer":
@@ -92,9 +80,7 @@ def login(
             matric_clean = matric_no.strip()
             form_data["matric_no"] = matric_no
             # Find student by matric number
-            student = session.exec(
-                select(Student).where(Student.matric_no == matric_clean)
-            ).first()
+            student = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
             if student and student.user_id:
                 # Get the linked user account
                 user = session.get(User, student.user_id)
@@ -107,9 +93,7 @@ def login(
     # Validate password and account status
     if user:
         if not verify_password(password, user.password_hash):
-            error = (
-                "Invalid credentials. Please check your login details and try again."
-            )
+            error = "Invalid credentials. Please check your login details and try again."
             user = None
         elif not user.is_active:
             error = "Your account is inactive. Please contact an administrator."
@@ -124,9 +108,7 @@ def login(
             "form": form_data,
             "error": error or "Invalid login credentials. Please try again.",
         }
-        return templates.TemplateResponse(
-            "auth/login.html", context, status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("auth/login.html", context, status_code=status.HTTP_400_BAD_REQUEST)
 
     # Update last_login timestamp
     from datetime import datetime
@@ -211,13 +193,9 @@ def register_student(
 
     # Check for duplicate matric_no
     if "matric_no" not in errors:
-        existing_student_matric = session.exec(
-            select(Student).where(Student.matric_no == matric_clean)
-        ).first()
+        existing_student_matric = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
         if existing_student_matric:
-            errors["matric_no"] = (
-                "This Student ID is already registered. Please use a different ID or contact support."
-            )
+            errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
 
     # Email validation
     if not email_clean:
@@ -229,21 +207,13 @@ def register_student(
 
     # Check for existing email in both User and Student tables (only if email format is valid)
     if "email" not in errors:
-        existing_user = session.exec(
-            select(User).where(User.email == email_clean)
-        ).first()
+        existing_user = session.exec(select(User).where(User.email == email_clean)).first()
         if existing_user:
-            errors["email"] = (
-                "This email is already registered. Please use a different email or try logging in."
-            )
+            errors["email"] = "This email is already registered. Please use a different email or try logging in."
         else:
-            existing_student_email = session.exec(
-                select(Student).where(Student.email == email_clean)
-            ).first()
+            existing_student_email = session.exec(select(Student).where(Student.email == email_clean)).first()
             if existing_student_email:
-                errors["email"] = (
-                    "This email is already registered. Please use a different email or try logging in."
-                )
+                errors["email"] = "This email is already registered. Please use a different email or try logging in."
 
     # Optional: Program validation
     if program_clean:
@@ -282,9 +252,7 @@ def register_student(
     elif not any(c.isdigit() for c in password):
         errors["password"] = "Password must contain at least one number."
     elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
-        errors["password"] = (
-            "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
-        )
+        errors["password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
 
     # Confirm password validation
     if not confirm_password:
@@ -366,9 +334,7 @@ def request_reset(
     if user:
         token = create_reset_token()
         expires_at = datetime.utcnow() + timedelta(minutes=30)
-        reset_token = PasswordResetToken(
-            user_id=user.id, token=token, expires_at=expires_at
-        )
+        reset_token = PasswordResetToken(user_id=user.id, token=token, expires_at=expires_at)
         session.add(reset_token)
         session.commit()
 
@@ -385,14 +351,8 @@ def request_reset(
 
 
 def _load_valid_token(token: str, session: Session) -> PasswordResetToken:
-    reset_token = session.exec(
-        select(PasswordResetToken).where(PasswordResetToken.token == token)
-    ).first()
-    if (
-        not reset_token
-        or reset_token.used
-        or reset_token.expires_at < datetime.utcnow()
-    ):
+    reset_token = session.exec(select(PasswordResetToken).where(PasswordResetToken.token == token)).first()
+    if not reset_token or reset_token.used or reset_token.expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
     return reset_token
 

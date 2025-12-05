@@ -47,12 +47,8 @@ class GradeIn(BaseModel):
 
 # 1) EXAM CREATION
 @router.post("/exam")
-def api_create_exam(
-    payload: CreateExamIn = Body(...), session: Session = Depends(get_session)
-):
-    exam = create_exam(
-        session, title=payload.exam_title, duration_minutes=payload.duration_minutes
-    )
+def api_create_exam(payload: CreateExamIn = Body(...), session: Session = Depends(get_session)):
+    exam = create_exam(session, title=payload.exam_title, duration_minutes=payload.duration_minutes)
     return {
         "exam_id": exam.id,
         "exam_title": exam.title,
@@ -109,9 +105,7 @@ def api_list_questions(exam_id: int, session: Session = Depends(get_session)):
 
 # 3) START EXAM + ATTEMPT TRACKING
 @router.post("/exam/{exam_id}/start")
-def api_start_exam(
-    exam_id: int, student_id: int = Query(...), session: Session = Depends(get_session)
-):
+def api_start_exam(exam_id: int, student_id: int = Query(...), session: Session = Depends(get_session)):
     attempt = start_attempt(session, exam_id, student_id)
     return {
         "attempt_id": attempt.id,
@@ -155,9 +149,7 @@ def api_timeout(
     payload: TimeoutPayload = Body(None),
     session: Session = Depends(get_session),
 ):
-    answers = (
-        [a.dict() for a in payload.answers] if payload and payload.answers else None
-    )
+    answers = [a.dict() for a in payload.answers] if payload and payload.answers else None
     attempt = timeout_attempt(session, exam_id, student_id, answers)
     return {
         "attempt_id": attempt.id,

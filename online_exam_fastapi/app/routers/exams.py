@@ -1,6 +1,4 @@
-
 """Exam management routes."""
-
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi import status as http_status
@@ -13,9 +11,18 @@ import json
 
 from app.database import get_session
 from app.deps import get_current_user, require_role
-from app.models import Course, Exam, User, Enrollment, MCQQuestion, MCQAnswer, MCQResult, Student, ExamActivityLog, CourseLecturer
-from sqlalchemy import func, and_, or_
-import json
+from app.models import (
+    Course,
+    Exam,
+    User,
+    Enrollment,
+    MCQQuestion,
+    MCQAnswer,
+    MCQResult,
+    Student,
+    ExamActivityLog,
+    CourseLecturer,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -45,19 +52,17 @@ def _get_exam(exam_id: int, session: Session) -> Exam:
 def _has_mcq_result(session: Session, exam_id: int, student_id: int) -> bool:
     """Return True if the student has a graded MCQ result for this exam (i.e. one attempt already used)."""
     existing = session.exec(
-        select(MCQResult).where(
-            MCQResult.exam_id == exam_id, MCQResult.student_id == student_id
-        )
+        select(MCQResult).where(MCQResult.exam_id == exam_id, MCQResult.student_id == student_id)
     ).first()
     return existing is not None
 
 
 @router.get("/schedule/student/{student_id}")
 def student_exam_schedule(
-    student_id: int, 
-    request: Request, 
+    student_id: int,
+    request: Request,
     session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user),
 ):
     """View exam schedule for a specific student."""
     # Get all courses student is enrolled in
@@ -83,12 +88,7 @@ def student_exam_schedule(
             status = "ended"
         exam_list.append({"exam": exam, "status": status})
     student = session.get(Student, student_id)
-    context = {
-        "request": request, 
-        "exams": exam_list, 
-        "student": student,
-        "current_user": current_user
-    }
+    context = {"request": request, "exams": exam_list, "student": student, "current_user": current_user}
     return templates.TemplateResponse("exams/schedule.html", context)
 
 
@@ -153,9 +153,7 @@ def join_exam(
         )
 
     # Get MCQ questions
-    questions = session.exec(
-        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
-    ).all()
+    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
     # Get any existing answers
     answers = session.exec(
         select(MCQAnswer).where(
@@ -176,11 +174,7 @@ def join_exam(
 
 
 @router.post("/{exam_id}/log-activity")
-async def log_exam_activity(
-    exam_id: int,
-    request: Request,
-    session: Session = Depends(get_session)
-):
+async def log_exam_activity(exam_id: int, request: Request, session: Session = Depends(get_session)):
     """Log suspicious activities during exam taking for anti-cheating purposes."""
     data = await request.json()
     student_id = data.get("student_id")
@@ -207,6 +201,7 @@ async def log_exam_activity(
     if metadata:
         if isinstance(metadata, dict):
             import json
+
             metadata_str = json.dumps(metadata)
         else:
             metadata_str = str(metadata)
@@ -219,7 +214,7 @@ async def log_exam_activity(
         activity_type=activity_type,
         activity_metadata=metadata_str,
         severity=severity,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.utcnow(),
     )
     session.add(activity_log)
     session.commit()
@@ -234,7 +229,11 @@ async def autosave_answers(exam_id: int, request: Request, session: Session = De
     answers = data.get("answers", {})
     for qid, selected in answers.items():
         qid = int(qid)
-        answer = session.exec(select(MCQAnswer).where(MCQAnswer.exam_id == exam_id, MCQAnswer.student_id == student_id, MCQAnswer.question_id == qid)).first()
+        answer = session.exec(
+            select(MCQAnswer).where(
+                MCQAnswer.exam_id == exam_id, MCQAnswer.student_id == student_id, MCQAnswer.question_id == qid
+            )
+        ).first()
         if answer:
             answer.selected_option = selected
             answer.saved_at = datetime.utcnow()
@@ -253,9 +252,7 @@ async def submit_exam(exam_id: int, request: Request, session: Session = Depends
 
     # Prevent multiple submissions: if a graded result already exists, return it unchanged.
     existing_result = session.exec(
-        select(MCQResult).where(
-            MCQResult.exam_id == exam_id, MCQResult.student_id == student_id
-        )
+        select(MCQResult).where(MCQResult.exam_id == exam_id, MCQResult.student_id == student_id)
     ).first()
     if existing_result is not None:
         return {
@@ -266,7 +263,11 @@ async def submit_exam(exam_id: int, request: Request, session: Session = Depends
     # Save answers
     for qid, selected in answers.items():
         qid = int(qid)
-        answer = session.exec(select(MCQAnswer).where(MCQAnswer.exam_id == exam_id, MCQAnswer.student_id == student_id, MCQAnswer.question_id == qid)).first()
+        answer = session.exec(
+            select(MCQAnswer).where(
+                MCQAnswer.exam_id == exam_id, MCQAnswer.student_id == student_id, MCQAnswer.question_id == qid
+            )
+        ).first()
         if answer:
             answer.selected_option = selected
             answer.saved_at = datetime.utcnow()
@@ -278,7 +279,11 @@ async def submit_exam(exam_id: int, request: Request, session: Session = Depends
     questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
     correct = 0
     for q in questions:
-        ans = session.exec(select(MCQAnswer).where(MCQAnswer.exam_id == exam_id, MCQAnswer.student_id == student_id, MCQAnswer.question_id == q.id)).first()
+        ans = session.exec(
+            select(MCQAnswer).where(
+                MCQAnswer.exam_id == exam_id, MCQAnswer.student_id == student_id, MCQAnswer.question_id == q.id
+            )
+        ).first()
         if ans and ans.selected_option == q.correct_option:
             correct += 1
     total = len(questions)
@@ -296,8 +301,14 @@ async def submit_exam(exam_id: int, request: Request, session: Session = Depends
 
 # ===================== SPRINT 1: LECTURER MCQ MANAGEMENT =====================
 
+
 @router.get("/{exam_id}/mcq")
-def list_mcqs(exam_id: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(require_role(["lecturer", "admin"]))):
+def list_mcqs(
+    exam_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     exam = session.get(Exam, exam_id)
     questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
     context = {"request": request, "exam": exam, "questions": questions, "current_user": current_user}
@@ -305,7 +316,12 @@ def list_mcqs(exam_id: int, request: Request, session: Session = Depends(get_ses
 
 
 @router.get("/{exam_id}/mcq/new")
-def new_mcq_form(exam_id: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(require_role(["lecturer", "admin"]))):
+def new_mcq_form(
+    exam_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     exam = session.get(Exam, exam_id)
     context = {"request": request, "exam": exam, "form": None, "errors": {}, "current_user": current_user}
     return templates.TemplateResponse("exams/mcq_form.html", context)
@@ -377,9 +393,7 @@ def create_mcq(
             "errors": errors,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     mcq = MCQQuestion(
         exam_id=exam_id,
@@ -399,7 +413,12 @@ def create_mcq(
 
 
 @router.get("/mcq/{question_id}/edit")
-def edit_mcq_form(question_id: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(require_role(["lecturer", "admin"]))):
+def edit_mcq_form(
+    question_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     mcq = session.get(MCQQuestion, question_id)
     exam = session.get(Exam, mcq.exam_id) if mcq else None
     context = {"request": request, "mcq": mcq, "exam": exam, "form": None, "errors": {}, "current_user": current_user}
@@ -407,7 +426,18 @@ def edit_mcq_form(question_id: int, request: Request, session: Session = Depends
 
 
 @router.post("/mcq/{question_id}/edit")
-def update_mcq(question_id: int, request: Request, question_text: str = Form(...), option_a: str = Form(...), option_b: str = Form(...), option_c: str = Form(...), option_d: str = Form(...), correct_option: str = Form(...), session: Session = Depends(get_session), current_user: User = Depends(require_role(["lecturer", "admin"]))):
+def update_mcq(
+    question_id: int,
+    request: Request,
+    question_text: str = Form(...),
+    option_a: str = Form(...),
+    option_b: str = Form(...),
+    option_c: str = Form(...),
+    option_d: str = Form(...),
+    correct_option: str = Form(...),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     mcq = session.get(MCQQuestion, question_id)
     if not mcq:
         raise HTTPException(status_code=404, detail="MCQ not found")
@@ -423,7 +453,11 @@ def update_mcq(question_id: int, request: Request, question_text: str = Form(...
 
 
 @router.post("/mcq/{question_id}/delete")
-def delete_mcq(question_id: int, session: Session = Depends(get_session), current_user: User = Depends(require_role(["lecturer", "admin"]))):
+def delete_mcq(
+    question_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     mcq = session.get(MCQQuestion, question_id)
     exam_id = mcq.exam_id if mcq else None
     if mcq:
@@ -458,7 +492,11 @@ def new_exam_form(
 
 # MCQ Management Menu: Select Exam for MCQ CRUD
 @router.get("/mcq/menu")
-def mcq_menu(request: Request, session: Session = Depends(get_session), current_user: User = Depends(require_role(["lecturer", "admin"]))):
+def mcq_menu(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["lecturer", "admin"])),
+):
     exams = session.exec(select(Exam)).all()
     context = {"request": request, "exams": exams, "current_user": current_user}
     return templates.TemplateResponse("exams/mcq_menu.html", context)
@@ -539,6 +577,7 @@ async def create_exam(
             # Check if start time is before today (current date/time)
             if start_dt:
                 from datetime import timezone, timedelta
+
                 # Get current time as UTC (timezone-aware) for comparison
                 now_aware = datetime.now(timezone.utc)
                 # Normalize start_dt to UTC (timezone-aware) for comparison
@@ -571,6 +610,7 @@ async def create_exam(
             # Normalize end_dt to naive UTC for database storage (consistent with start_dt)
             if end_dt:
                 from datetime import timezone
+
                 if end_dt.tzinfo is None:
                     # Already naive, assume UTC
                     pass
@@ -612,9 +652,7 @@ async def create_exam(
             "status_options": STATUS_OPTIONS,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     exam = Exam(
         title=title_clean,
@@ -631,9 +669,7 @@ async def create_exam(
     session.add(exam)
     session.commit()
     session.refresh(exam)
-    return RedirectResponse(
-        url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/course/{course_id}/student")
@@ -650,37 +686,35 @@ def student_exams_for_course(
     # Verify user is logged in and is a student
     if not current_user:
         from fastapi.responses import RedirectResponse
+
         return RedirectResponse(url="/auth/login", status_code=303)
-    
+
     if current_user.role != "student":
         raise HTTPException(status_code=403, detail="This page is only accessible to students")
-    
+
     course = session.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    
+
     # Verify student is enrolled in this course
     student_id = current_user.student_id
     if student_id is None:
         student = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
         student_id = student.id if student else None
-    
+
     if student_id is None:
         raise HTTPException(status_code=403, detail="Student record not found")
-    
+
     enrollment = session.exec(
-        select(Enrollment).where(
-            Enrollment.student_id == student_id,
-            Enrollment.course_id == course_id
-        )
+        select(Enrollment).where(Enrollment.student_id == student_id, Enrollment.course_id == course_id)
     ).first()
-    
+
     if not enrollment:
         raise HTTPException(status_code=403, detail="You are not enrolled in this course")
-    
+
     # Get exams for this course
     exams = session.exec(select(Exam).where(Exam.course_id == course_id)).all()
-    
+
     # Compute exam status for each exam
     now = datetime.now()
     exam_list = []
@@ -697,11 +731,11 @@ def student_exams_for_course(
             status = "ongoing"
         else:
             status = "ended"
-        
+
         # Check if student has already completed this exam
         has_result = _has_mcq_result(session, exam.id, student_id)
         exam_list.append({"exam": exam, "status": status, "has_result": has_result})
-    
+
     # Sorting
     key_map = {
         "title": lambda e: e["exam"].title or "",
@@ -711,11 +745,11 @@ def student_exams_for_course(
         "duration": lambda e: e["exam"].duration_minutes or 0,
         "status": lambda e: e["status"],
     }
-    
+
     sort_key = key_map.get(sort or "start", key_map["start"])
     is_desc = (direction or "asc").lower() == "desc"
     exams_sorted = sorted(exam_list, key=sort_key, reverse=is_desc)
-    
+
     # Pagination
     total_exams = len(exams_sorted)
     total_pages = (total_exams + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_exams > 0 else 1
@@ -723,13 +757,11 @@ def student_exams_for_course(
     start_idx = (page - 1) * ITEMS_PER_PAGE
     end_idx = start_idx + ITEMS_PER_PAGE
     exams_paginated = exams_sorted[start_idx:end_idx]
-    
-    has_sort = (sort not in (None, "", "start")) or (
-        (direction or "asc").lower() != "asc"
-    )
-    
+
+    has_sort = (sort not in (None, "", "start")) or ((direction or "asc").lower() != "asc")
+
     student = session.get(Student, student_id)
-    
+
     context = {
         "request": request,
         "course": course,
@@ -761,12 +793,13 @@ def exams_for_course(
     # Redirect students to the student-specific route
     if current_user and current_user.role == "student":
         from fastapi.responses import RedirectResponse
+
         return RedirectResponse(url=f"/exams/course/{course_id}/student", status_code=303)
-    
+
     # Require lecturer or admin role
     if not current_user or current_user.role not in ["lecturer", "admin"]:
         raise HTTPException(status_code=403, detail="Access denied. Lecturer or admin role required.")
-    
+
     course = session.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -794,9 +827,7 @@ def exams_for_course(
     end_idx = start_idx + ITEMS_PER_PAGE
     exams_paginated = exams_sorted[start_idx:end_idx]
 
-    has_sort = (sort not in (None, "", "start")) or (
-        (direction or "asc").lower() != "asc"
-    )
+    has_sort = (sort not in (None, "", "start")) or ((direction or "asc").lower() != "asc")
 
     context = {
         "request": request,
@@ -830,24 +861,21 @@ def exam_detail(
     """View exam details. Students can view, lecturers/admins can view and edit."""
     exam = _get_exam(exam_id, session)
     course = session.get(Course, exam.course_id) if exam.course_id else None
-    
+
     # If student, verify they are enrolled in the course
     if current_user and current_user.role == "student":
         student_id = current_user.student_id
         if student_id is None:
             student = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
             student_id = student.id if student else None
-        
+
         if student_id and exam.course_id:
             enrollment = session.exec(
-                select(Enrollment).where(
-                    Enrollment.student_id == student_id,
-                    Enrollment.course_id == exam.course_id
-                )
+                select(Enrollment).where(Enrollment.student_id == student_id, Enrollment.course_id == exam.course_id)
             ).first()
             if not enrollment:
                 raise HTTPException(status_code=403, detail="You are not enrolled in this course")
-    
+
     context = {
         "request": request,
         "exam": exam,
@@ -866,6 +894,7 @@ def exam_detail_student(
 ):
     """Alias for exam detail page - redirects to main detail page."""
     from fastapi.responses import RedirectResponse
+
     return RedirectResponse(url=f"/exams/{exam_id}", status_code=303)
 
 
@@ -964,6 +993,7 @@ async def update_exam(
             # Check if start time is before today (current date/time)
             if start_dt:
                 from datetime import timezone, timedelta
+
                 # Get current time as UTC (timezone-aware) for comparison
                 now_aware = datetime.now(timezone.utc)
                 # Normalize start_dt to UTC (timezone-aware) for comparison
@@ -996,6 +1026,7 @@ async def update_exam(
             # Normalize end_dt to naive UTC for database storage (consistent with start_dt)
             if end_dt:
                 from datetime import timezone
+
                 if end_dt.tzinfo is None:
                     # Already naive, assume UTC
                     pass
@@ -1036,9 +1067,7 @@ async def update_exam(
             "status_options": STATUS_OPTIONS,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     exam.title = title_clean
     exam.subject = subject_clean
@@ -1053,12 +1082,11 @@ async def update_exam(
     session.add(exam)
     session.commit()
 
-    return RedirectResponse(
-        url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 # ===================== EXAM SECURITY: ACTIVITY LOGGING & ANALYTICS =====================
+
 
 @router.get("/{exam_id}/activity-logs")
 def view_activity_logs(
@@ -1073,36 +1101,35 @@ def view_activity_logs(
 ):
     """View activity logs for a specific exam with filtering options."""
     exam = _get_exam(exam_id, session)
-    
+
     # Check if lecturer has access to this exam's course
     if current_user.role == "lecturer":
         course_lecturer = session.exec(
             select(CourseLecturer).where(
-                CourseLecturer.lecturer_id == current_user.id,
-                CourseLecturer.course_id == exam.course_id
+                CourseLecturer.lecturer_id == current_user.id, CourseLecturer.course_id == exam.course_id
             )
         ).first()
         if not course_lecturer and not current_user.role == "admin":
             raise HTTPException(status_code=403, detail="You don't have access to this exam's activity logs")
-    
+
     # Build query
     query = select(ExamActivityLog).where(ExamActivityLog.exam_id == exam_id)
-    
+
     if student_id:
         query = query.where(ExamActivityLog.student_id == student_id)
     if activity_type:
         query = query.where(ExamActivityLog.activity_type == activity_type)
     if severity:
         query = query.where(ExamActivityLog.severity == severity)
-    
+
     query = query.order_by(ExamActivityLog.timestamp.desc())
-    
+
     # Get all logs
     all_logs = session.exec(query).all()
-    
+
     # Get students and exam info for display
     students = {s.id: s for s in session.exec(select(Student)).all()}
-    
+
     # Calculate statistics
     stats = {
         "total_activities": len(all_logs),
@@ -1110,21 +1137,21 @@ def view_activity_logs(
         "by_type": {},
         "by_student": {},
     }
-    
+
     for log in all_logs:
         # Count by severity
         stats["by_severity"][log.severity] = stats["by_severity"].get(log.severity, 0) + 1
-        
+
         # Count by type
         stats["by_type"][log.activity_type] = stats["by_type"].get(log.activity_type, 0) + 1
-        
+
         # Count by student
         student_name = students.get(log.student_id, Student(name="Unknown")).name
         if student_name not in stats["by_student"]:
             stats["by_student"][student_name] = {"total": 0, "high": 0, "medium": 0, "low": 0}
         stats["by_student"][student_name]["total"] += 1
         stats["by_student"][student_name][log.severity] += 1
-    
+
     # Pagination
     total_logs = len(all_logs)
     total_pages = (total_logs + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_logs > 0 else 1
@@ -1132,7 +1159,7 @@ def view_activity_logs(
     start_idx = (page - 1) * ITEMS_PER_PAGE
     end_idx = start_idx + ITEMS_PER_PAGE
     logs_paginated = all_logs[start_idx:end_idx]
-    
+
     # Parse metadata for display
     logs_with_metadata = []
     for log in logs_paginated:
@@ -1140,19 +1167,15 @@ def view_activity_logs(
         if log.activity_metadata:
             try:
                 metadata_obj = json.loads(log.activity_metadata)
-            except:
+            except (json.JSONDecodeError, ValueError):
                 metadata_obj = {"raw": log.activity_metadata}
-        logs_with_metadata.append({
-            "log": log,
-            "student": students.get(log.student_id),
-            "metadata": metadata_obj
-        })
-    
+        logs_with_metadata.append({"log": log, "student": students.get(log.student_id), "metadata": metadata_obj})
+
     # Get unique activity types and severities for filter dropdowns
     activity_types = sorted(set(log.activity_type for log in all_logs))
     severities = ["low", "medium", "high"]
     student_list = [{"id": s.id, "name": s.name} for s in students.values()]
-    
+
     context = {
         "request": request,
         "exam": exam,
@@ -1184,33 +1207,30 @@ def view_activity_analytics(
 ):
     """View activity analytics and flagged students for an exam."""
     exam = _get_exam(exam_id, session)
-    
+
     # Check if lecturer has access to this exam's course
     if current_user.role == "lecturer":
         course_lecturer = session.exec(
             select(CourseLecturer).where(
-                CourseLecturer.lecturer_id == current_user.id,
-                CourseLecturer.course_id == exam.course_id
+                CourseLecturer.lecturer_id == current_user.id, CourseLecturer.course_id == exam.course_id
             )
         ).first()
         if not course_lecturer and not current_user.role == "admin":
             raise HTTPException(status_code=403, detail="You don't have access to this exam's analytics")
-    
+
     # Get all activity logs for this exam
-    logs = session.exec(
-        select(ExamActivityLog).where(ExamActivityLog.exam_id == exam_id)
-    ).all()
-    
+    logs = session.exec(select(ExamActivityLog).where(ExamActivityLog.exam_id == exam_id)).all()
+
     # Get students
     students = {s.id: s for s in session.exec(select(Student)).all()}
-    
+
     # Calculate activity scores and flag students
     # Scoring: low=1, medium=3, high=10
     SCORE_WEIGHTS = {"low": 1, "medium": 3, "high": 10}
     FLAG_THRESHOLD = 20  # Flag if score >= 20
-    
+
     student_analytics = {}
-    
+
     for log in logs:
         if log.student_id not in student_analytics:
             student_analytics[log.student_id] = {
@@ -1222,29 +1242,25 @@ def view_activity_analytics(
                 "flagged": False,
                 "last_activity": log.timestamp,
             }
-        
+
         analytics = student_analytics[log.student_id]
         analytics["total_activities"] += 1
         analytics["score"] += SCORE_WEIGHTS.get(log.severity, 1)
         analytics["by_severity"][log.severity] += 1
         analytics["by_type"][log.activity_type] = analytics["by_type"].get(log.activity_type, 0) + 1
-        
+
         if log.timestamp > analytics["last_activity"]:
             analytics["last_activity"] = log.timestamp
-        
+
         if analytics["score"] >= FLAG_THRESHOLD:
             analytics["flagged"] = True
-    
+
     # Sort by score (highest first)
-    analytics_list = sorted(
-        student_analytics.values(),
-        key=lambda x: x["score"],
-        reverse=True
-    )
-    
+    analytics_list = sorted(student_analytics.values(), key=lambda x: x["score"], reverse=True)
+
     # Get flagged students
     flagged_students = [a for a in analytics_list if a["flagged"]]
-    
+
     # Overall statistics
     overall_stats = {
         "total_students_with_activities": len(student_analytics),
@@ -1253,7 +1269,7 @@ def view_activity_analytics(
         "average_score": sum(a["score"] for a in analytics_list) / len(analytics_list) if analytics_list else 0,
         "highest_score": analytics_list[0]["score"] if analytics_list else 0,
     }
-    
+
     # Prepare analytics data for JSON serialization (for charts)
     analytics_json = []
     for a in analytics_list:
@@ -1264,17 +1280,19 @@ def view_activity_analytics(
                 "name": a["student"].name,
                 "matric_no": a["student"].matric_no if hasattr(a["student"], "matric_no") else None,
             }
-        analytics_json.append({
-            "student_id": None if not a["student"] else a["student"].id,
-            "student": student_data,
-            "score": a["score"],
-            "total_activities": a["total_activities"],
-            "by_type": a["by_type"],
-            "by_severity": a["by_severity"],
-            "flagged": a["flagged"],
-            "last_activity": a["last_activity"].isoformat() if a["last_activity"] else None,
-        })
-    
+        analytics_json.append(
+            {
+                "student_id": None if not a["student"] else a["student"].id,
+                "student": student_data,
+                "score": a["score"],
+                "total_activities": a["total_activities"],
+                "by_type": a["by_type"],
+                "by_severity": a["by_severity"],
+                "flagged": a["flagged"],
+                "last_activity": a["last_activity"].isoformat() if a["last_activity"] else None,
+            }
+        )
+
     context = {
         "request": request,
         "exam": exam,

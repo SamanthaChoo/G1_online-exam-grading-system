@@ -44,9 +44,7 @@ def list_users(
         "users": users_sorted,
         "sort": sort,
         "direction": "desc" if is_desc else "asc",
-        "has_sort": (
-            sort not in (None, "", "created") or (direction or "desc").lower() != "desc"
-        ),
+        "has_sort": (sort not in (None, "", "created") or (direction or "desc").lower() != "desc"),
         "current_user": current_user,
     }
     return templates.TemplateResponse("admin/user_list.html", context)
@@ -138,17 +136,13 @@ def edit_user(
             errors["phone"] = "Please enter a valid phone number (7-15 digits)."
 
     # Check for duplicate email on other users
-    existing = session.exec(
-        select(User).where(User.email == email_clean, User.id != user_id)
-    ).first()
+    existing = session.exec(select(User).where(User.email == email_clean, User.id != user_id)).first()
     if existing:
         errors["email"] = "Another user already uses this email."
 
     # Check for duplicate staff_id on other users (if provided and role is lecturer)
     if staff_id_clean and role_clean == "lecturer":
-        existing_staff = session.exec(
-            select(User).where(User.staff_id == staff_id_clean, User.id != user_id)
-        ).first()
+        existing_staff = session.exec(select(User).where(User.staff_id == staff_id_clean, User.id != user_id)).first()
         if existing_staff:
             errors["staff_id"] = "This Staff ID is already in use by another user."
 
@@ -170,9 +164,7 @@ def edit_user(
             "errors": errors,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "admin/user_form.html", context, status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("admin/user_form.html", context, status_code=status.HTTP_400_BAD_REQUEST)
 
     user.name = name_clean
     user.email = email_clean
@@ -187,9 +179,7 @@ def edit_user(
     if hasattr(user, "phone"):
         user.phone = phone_clean
     if hasattr(user, "status"):
-        user.status = (
-            status_field if status_field in ["active", "suspended"] else "active"
-        )
+        user.status = status_field if status_field in ["active", "suspended"] else "active"
 
     session.add(user)
     session.commit()
@@ -277,9 +267,7 @@ def create_lecturer(
 
     # Check for duplicate staff_id
     if staff_id_clean:
-        existing_staff = session.exec(
-            select(User).where(User.staff_id == staff_id_clean)
-        ).first()
+        existing_staff = session.exec(select(User).where(User.staff_id == staff_id_clean)).first()
         if existing_staff:
             errors["staff_id"] = "This Staff ID is already in use."
 
@@ -296,9 +284,7 @@ def create_lecturer(
             "errors": errors,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "admin/lecturer_form.html", context, status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("admin/lecturer_form.html", context, status_code=status.HTTP_400_BAD_REQUEST)
 
     # Create lecturer user
     lecturer = User(
@@ -331,7 +317,5 @@ def reactivate_admin(
             admin.status = "active"
         session.add(admin)
         session.commit()
-        return {
-            "message": "Admin account reactivated successfully. You can now log in."
-        }
+        return {"message": "Admin account reactivated successfully. You can now log in."}
     return {"message": "Admin account not found."}
