@@ -2,13 +2,17 @@ name: CI
 
 # Continuous Integration pipeline for the repository
 # - Detects and runs on pushes and pull requests for main branches
-# - Sets up Python, installs dependencies, runs lint and tests
+# - Nightly automated builds at 2 AM UTC
+# - Sets up Python, installs dependencies, runs lint, tests, security checks, and code quality
 # - Uses caching for pip to speed up repeated runs
 on:
   push:
     branches: [ main, master, kxy-dev ]
   pull_request:
     branches: [ main, master, kxy-dev ]
+  schedule:
+    # Nightly builds at 2 AM UTC (ensures bug-free system)
+    - cron: '0 2 * * *'
 
 jobs:
   build:
@@ -40,7 +44,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f online_exam_fastapi/requirements.txt ]; then pip install -r online_exam_fastapi/requirements.txt; fi
-          pip install flake8 pytest
+          pip install flake8 pytest pytest-cov black mypy safety bandit
+
+      - name: Check code formatting (black)
+        # Verify code formatting consistency
+        run: |
+          echo "Checking code formatting with black..."
+          python -m black --check online_exam_fastapi/app --line-length 120 || exit 1
 
       - name: Run linter (flake8)
         # Lint the app inside the `online_exam_fastapi` folder to avoid legacy top-level `app/` code.
@@ -48,15 +58,45 @@ jobs:
           echo "Running flake8 on online_exam_fastapi/app with .flake8 config..."
           python -m flake8 online_exam_fastapi/app --config .flake8 || exit 1
 
-      - name: Run tests (pytest)
-        # Run unit tests in the `online_exam_fastapi` package and emit JUnit XML
+      - name: Run type checking (mypy)
+        # Type checking with mypy (non-blocking, informational)
+        continue-on-error: true
         run: |
-          echo "Running pytest in online_exam_fastapi..."
+          echo "Running mypy type checking..."
+          python -m mypy online_exam_fastapi/app --ignore-missing-imports --no-strict-optional || true
+
+      - name: Security scan dependencies (safety)
+        # Check for known security vulnerabilities in dependencies
+        continue-on-error: true
+        run: |
+          echo "Scanning dependencies for security vulnerabilities..."
+          if [ -f online_exam_fastapi/requirements.txt ]; then
+            python -m safety check -r online_exam_fastapi/requirements.txt || true
+          fi
+
+      - name: Security scan code (bandit)
+        # Scan Python code for security issues
+        continue-on-error: true
+        run: |
+          echo "Scanning code for security issues with bandit..."
+          python -m bandit -r online_exam_fastapi/app -ll || true
+
+      - name: Run tests with coverage (pytest)
+        # Run unit tests in the `online_exam_fastapi` package and emit JUnit XML with coverage
+        run: |
+          echo "Running pytest in online_exam_fastapi with coverage..."
           cd online_exam_fastapi
           mkdir -p test-results
-          pytest -q --maxfail=1 --junitxml=test-results/results-${{ matrix.python-version }}.xml || exit 1
+          pytest -v --cov=app --cov-report=xml --cov-report=term --junitxml=test-results/results-${{ matrix.python-version }}.xml || exit 1
 
-      - name: Upload test results (if any)
+      - name: Build verification
+        # Verify the application can be imported and initialized
+        run: |
+          echo "Verifying application build..."
+          cd online_exam_fastapi
+          python -c "from app.main import app; assert app is not None; print('✓ Application builds successfully')" || exit 1
+
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -64,3 +104,13 @@ jobs:
           path: |
             online_exam_fastapi/test-results/**
             online_exam_fastapi/.pytest_cache/**
+            online_exam_fastapi/coverage.xml
+
+      - name: Upload coverage reports
+        if: always()
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./online_exam_fastapi/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
