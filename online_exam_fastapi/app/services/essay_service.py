@@ -18,28 +18,26 @@ def get_exam(session: Session, exam_id: int) -> Optional[Exam]:
     return session.get(Exam, exam_id)
 
 
-def add_question(session: Session, exam_id: int, question_text: str, max_marks: int) -> ExamQuestion:
+def add_question(
+    session: Session, exam_id: int, question_text: str, max_marks: int
+) -> ExamQuestion:
     # Ensure the target exam exists before adding the question
     exam = session.get(Exam, exam_id)
     if not exam:
         raise ValueError(f"Exam with id={exam_id} does not exist")
-    
+
     # Sanitize question text to prevent XSS
     sanitized_text = sanitize_question_text(question_text)
     if not sanitized_text:
         raise ValueError("Question text cannot be empty after sanitization")
-    
+
     # Validate max_marks is positive
     if max_marks < 1:
         raise ValueError("max_marks must be at least 1")
     if max_marks > 1000:
         raise ValueError("max_marks cannot exceed 1000")
 
-    q = ExamQuestion(
-        exam_id=exam_id,
-        question_text=sanitized_text,
-        max_marks=max_marks
-    )
+    q = ExamQuestion(exam_id=exam_id, question_text=sanitized_text, max_marks=max_marks)
     session.add(q)
     session.commit()
     session.refresh(q)
@@ -47,10 +45,14 @@ def add_question(session: Session, exam_id: int, question_text: str, max_marks: 
 
 
 def list_questions(session: Session, exam_id: int) -> List[ExamQuestion]:
-    return session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
+    return session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
 
 
-def _find_in_progress_attempt(session: Session, exam_id: int, student_id: int) -> Optional[ExamAttempt]:
+def _find_in_progress_attempt(
+    session: Session, exam_id: int, student_id: int
+) -> Optional[ExamAttempt]:
     stmt = select(ExamAttempt).where(
         (ExamAttempt.exam_id == exam_id)
         & (ExamAttempt.student_id == student_id)
@@ -67,7 +69,9 @@ def start_attempt(session: Session, exam_id: int, student_id: int) -> ExamAttemp
 
     # If there's already a final attempt (submitted/timed_out), do not create a new one.
     stmt_final = select(ExamAttempt).where(
-        (ExamAttempt.exam_id == exam_id) & (ExamAttempt.student_id == student_id) & (ExamAttempt.is_final == 1)
+        (ExamAttempt.exam_id == exam_id)
+        & (ExamAttempt.student_id == student_id)
+        & (ExamAttempt.is_final == 1)
     )
     final_attempt = session.exec(stmt_final).first()
     if final_attempt:
@@ -88,7 +92,9 @@ def start_attempt(session: Session, exam_id: int, student_id: int) -> ExamAttemp
     return attempt
 
 
-def submit_answers(session: Session, exam_id: int, student_id: int, answers: List[dict]) -> ExamAttempt:
+def submit_answers(
+    session: Session, exam_id: int, student_id: int, answers: List[dict]
+) -> ExamAttempt:
     # find or create attempt
     attempt = _find_in_progress_attempt(session, exam_id, student_id)
     if not attempt:
@@ -98,7 +104,9 @@ def submit_answers(session: Session, exam_id: int, student_id: int, answers: Lis
     for a in answers:
         qid = a.get("question_id")
         text = a.get("answer_text")
-        stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid))
+        stmt = select(EssayAnswer).where(
+            (EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid)
+        )
         existing = session.exec(stmt).first()
         if existing:
             existing.answer_text = text
@@ -131,13 +139,18 @@ def timeout_attempt(
         for a in answers:
             qid = a.get("question_id")
             text = a.get("answer_text")
-            stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid))
+            stmt = select(EssayAnswer).where(
+                (EssayAnswer.attempt_id == attempt.id)
+                & (EssayAnswer.question_id == qid)
+            )
             existing = session.exec(stmt).first()
             if existing:
                 existing.answer_text = text
                 session.add(existing)
             else:
-                new = EssayAnswer(attempt_id=attempt.id, question_id=qid, answer_text=text)
+                new = EssayAnswer(
+                    attempt_id=attempt.id, question_id=qid, answer_text=text
+                )
                 session.add(new)
 
     attempt.status = "timed_out"
@@ -153,19 +166,19 @@ def grade_attempt(
     session: Session,
     attempt_id: int,
     scores: List[dict],
-    feedback_list: Optional[List[dict]] = None
+    feedback_list: Optional[List[dict]] = None,
 ) -> dict:
     """Grade an exam attempt with marks and optional feedback.
-    
+
     Args:
         session: Database session
         attempt_id: ID of the attempt to grade
         scores: List of dicts with question_id and marks
         feedback_list: Optional list of dicts with question_id and feedback
-        
+
     Returns:
         Dict with grading summary
-        
+
     Raises:
         ValueError: If marks are out of valid range
     """
@@ -177,24 +190,24 @@ def grade_attempt(
             text = f.get("feedback", "")
             if text:
                 feedback_map[qid] = sanitize_feedback(text)
-    
+
     # Update marks_awarded for each question
     total = 0
     for s in scores:
         qid = s.get("question_id")
         marks = s.get("marks")
-        
+
         # Get the question to check max_marks
         question = session.get(ExamQuestion, qid)
         if not question:
             raise ValueError(f"Question {qid} does not exist")
-        
+
         # Validate marks are in range
         try:
             validate_marks(marks, question.max_marks)
         except ValueError as e:
             raise ValueError(f"Question {qid}: {str(e)}")
-        
+
         stmt = select(EssayAnswer).where(
             (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == qid)
         )
@@ -212,7 +225,7 @@ def grade_attempt(
                 question_id=qid,
                 answer_text=None,
                 marks_awarded=marks,
-                grader_feedback=feedback_map.get(qid)
+                grader_feedback=feedback_map.get(qid),
             )
             session.add(new)
             total += marks or 0

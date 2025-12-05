@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}Exam Results Overview{% endblock %}
+{% block content %}
+
+<style>
+  .lecturer-results-header {
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 0.5rem 1rem rgba(102, 126, 234, 0.3);
+  }
+  .course-card {
+    border-radius: 1rem;
+    border: none;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.08);
+    transition: all 0.3s;
+    overflow: hidden;
+  }
+  .course-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+  }
+  .course-header {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 1.5rem;
+    border-bottom: 3px solid #667eea;
+  }
+  .stat-badge {
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+</style>
+
+<div class="container py-4">
+  <!-- Header Card -->
+  <div class="card border-0 lecturer-results-header mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h2 class="h3 mb-2">
+            <i class="bi bi-bar-chart-fill me-2"></i>Exam Results Overview
+          </h2>
+          <p class="mb-0 opacity-90">
+            View and analyze exam results across all your courses
+          </p>
+        </div>
+        <div>
+          <a href="/courses/" class="btn btn-light">
+            <i class="bi bi-arrow-left me-2"></i>Back to Courses
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if course_stats %}
+  <div class="row g-4">
+    {% for stat in course_stats %}
+    <div class="col-md-6 col-lg-4">
+      <div class="course-card">
+        <div class="course-header">
+          <h5 class="mb-1 fw-bold">{{ stat.course.name }}</h5>
+          <p class="text-muted mb-0 small">{{ stat.course.code }}</p>
+        </div>
+        <div class="card-body">
+          <!-- Statistics -->
+          <div class="d-flex flex-column gap-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted">
+                <i class="bi bi-file-text me-2"></i>Total Exams
+              </span>
+              <span class="badge bg-primary-subtle text-primary stat-badge">
+                {{ stat.total_exams }}
+              </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted">
+                <i class="bi bi-check-circle me-2"></i>With Results
+              </span>
+              <span class="badge bg-success-subtle text-success stat-badge">
+                {{ stat.completed_exams }}
+              </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted">
+                <i class="bi bi-people me-2"></i>Enrolled Students
+              </span>
+              <span class="badge bg-info-subtle text-info stat-badge">
+                {{ stat.total_students }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-grid gap-2">
+            <a href="/exams/results/course/{{ stat.course.id }}" class="btn btn-primary">
+              <i class="bi bi-bar-chart-line me-2"></i>View Course Results
+            </a>
+            <a href="/exams/course/{{ stat.course.id }}" class="btn btn-outline-secondary">
+              <i class="bi bi-list-ul me-2"></i>View Exams
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <!-- Empty State -->
+  <div class="card border-0 shadow-sm" style="border-radius: 1rem;">
+    <div class="card-body text-center py-5">
+      <div class="mb-4">
+        <i class="bi bi-folder-x" style="font-size: 5rem; color: #dee2e6;"></i>
+      </div>
+      <h4 class="text-muted mb-3">No Courses Found</h4>
+      <p class="text-muted mb-4">
+        You don't have any courses assigned yet.<br>
+        Contact an administrator to assign courses to you.
+      </p>
+      <a href="/courses/" class="btn btn-primary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Courses
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

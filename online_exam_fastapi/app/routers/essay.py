@@ -15,10 +15,12 @@ from app.services.essay_service import (
     start_attempt,
     submit_answers,
     timeout_attempt,
+    _find_in_progress_attempt,
 )
+from app.models import EssayAnswer
 from fastapi import APIRouter, Body, Depends, Query
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 router = APIRouter()
 
@@ -47,8 +49,12 @@ class GradeIn(BaseModel):
 
 # 1) EXAM CREATION
 @router.post("/exam")
-def api_create_exam(payload: CreateExamIn = Body(...), session: Session = Depends(get_session)):
-    exam = create_exam(session, title=payload.exam_title, duration_minutes=payload.duration_minutes)
+def api_create_exam(
+    payload: CreateExamIn = Body(...), session: Session = Depends(get_session)
+):
+    exam = create_exam(
+        session, title=payload.exam_title, duration_minutes=payload.duration_minutes
+    )
     return {
         "exam_id": exam.id,
         "exam_title": exam.title,
@@ -105,7 +111,9 @@ def api_list_questions(exam_id: int, session: Session = Depends(get_session)):
 
 # 3) START EXAM + ATTEMPT TRACKING
 @router.post("/exam/{exam_id}/start")
-def api_start_exam(exam_id: int, student_id: int = Query(...), session: Session = Depends(get_session)):
+def api_start_exam(
+    exam_id: int, student_id: int = Query(...), session: Session = Depends(get_session)
+):
     attempt = start_attempt(session, exam_id, student_id)
     return {
         "attempt_id": attempt.id,
@@ -137,6 +145,43 @@ def api_submit(
     }
 
 
+# 4.5) AUTO-SAVE ANSWERS (periodic save without submission)
+class AutoSavePayload(BaseModel):
+    answers: List[AnswerIn]
+
+
+@router.post("/exam/{exam_id}/autosave")
+def api_autosave(
+    exam_id: int,
+    student_id: int = Query(...),
+    payload: AutoSavePayload = Body(...),
+    session: Session = Depends(get_session),
+):
+    """Auto-save essay answers without submitting the attempt."""
+    # Find or create an in-progress attempt
+    attempt = _find_in_progress_attempt(session, exam_id, student_id)
+    if not attempt:
+        attempt = start_attempt(session, exam_id, student_id)
+
+    # Upsert answers without changing attempt status
+    for a in payload.answers:
+        qid = a.question_id
+        text = a.answer_text
+        stmt = select(EssayAnswer).where(
+            (EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid)
+        )
+        existing = session.exec(stmt).first()
+        if existing:
+            existing.answer_text = text
+            session.add(existing)
+        else:
+            new = EssayAnswer(attempt_id=attempt.id, question_id=qid, answer_text=text)
+            session.add(new)
+
+    session.commit()
+    return {"status": "success", "attempt_id": attempt.id}
+
+
 # 5) AUTO-SUBMIT ON TIMEOUT
 class TimeoutPayload(BaseModel):
     answers: Optional[List[AnswerIn]] = None
@@ -149,7 +194,9 @@ def api_timeout(
     payload: TimeoutPayload = Body(None),
     session: Session = Depends(get_session),
 ):
-    answers = [a.dict() for a in payload.answers] if payload and payload.answers else None
+    answers = (
+        [a.dict() for a in payload.answers] if payload and payload.answers else None
+    )
     attempt = timeout_attempt(session, exam_id, student_id, answers)
     return {
         "attempt_id": attempt.id,

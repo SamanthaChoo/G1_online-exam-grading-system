@@ -5,7 +5,15 @@ from typing import Optional
 
 from app.database import get_session
 from app.deps import get_current_user, require_role, require_login
-from app.models import Exam, MCQQuestion, MCQAnswer, MCQResult, User, Student, Enrollment
+from app.models import (
+    Exam,
+    MCQQuestion,
+    MCQAnswer,
+    MCQResult,
+    User,
+    Student,
+    Enrollment,
+)
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Query
 from fastapi import status as http_status
 from fastapi.responses import RedirectResponse
@@ -86,7 +94,12 @@ def _validate_mcq_inputs(
 
     # Check for duplicate options (case-insensitive)
     if not errors:  # Only check duplicates if basic validation passed
-        options = [opt_a_clean.lower(), opt_b_clean.lower(), opt_c_clean.lower(), opt_d_clean.lower()]
+        options = [
+            opt_a_clean.lower(),
+            opt_b_clean.lower(),
+            opt_c_clean.lower(),
+            opt_d_clean.lower(),
+        ]
         if len(options) != len(set(options)):
             errors["options"] = "All options must be unique."
 
@@ -94,9 +107,7 @@ def _validate_mcq_inputs(
     if not correct_clean:
         errors["correct_option"] = "Correct option must be specified."
     elif correct_clean not in VALID_CORRECT_OPTIONS:
-        errors["correct_option"] = (
-            "Correct option must be one of: A, B, C, or D."
-        )
+        errors["correct_option"] = "Correct option must be one of: A, B, C, or D."
 
     return errors
 
@@ -114,7 +125,7 @@ def mcq_menu(
     else:
         # For lecturers, filter by their courses
         exams = session.exec(select(Exam)).all()
-    
+
     context = {
         "request": request,
         "exams": exams,
@@ -394,7 +405,7 @@ def start_mcq_form(
 ):
     """Display confirmation page before starting MCQ exam."""
     exam = _get_exam(exam_id, session)
-    
+
     context = {
         "request": request,
         "exam": exam,
@@ -417,7 +428,9 @@ def start_mcq_submit(
     # Resolve the Student.id linked to this user
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
@@ -435,7 +448,9 @@ def start_mcq_submit(
             )
         ).first()
         if enrollment is None:
-            raise HTTPException(status_code=403, detail="You are not enrolled in this course")
+            raise HTTPException(
+                status_code=403, detail="You are not enrolled in this course"
+            )
 
     # Check if student already has answers for this exam
     existing_answer = session.exec(
@@ -445,7 +460,9 @@ def start_mcq_submit(
         )
     ).first()
     if existing_answer:
-        raise HTTPException(status_code=403, detail="You have already answered this exam")
+        raise HTTPException(
+            status_code=403, detail="You have already answered this exam"
+        )
 
     # Redirect to attempt page
     return RedirectResponse(
@@ -466,7 +483,7 @@ def mcq_attempt(
         raise HTTPException(status_code=403, detail="Only students can take exams")
 
     exam = _get_exam(exam_id, session)
-    
+
     # Get all MCQ questions for this exam
     questions = session.exec(
         select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
@@ -478,7 +495,9 @@ def mcq_attempt(
     # Get student record
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
@@ -522,7 +541,9 @@ async def submit_mcq_attempt(
     # Get student ID
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
@@ -533,7 +554,7 @@ async def submit_mcq_attempt(
 
     # Read form data
     form = await request.form()
-    
+
     # Collect answers from fields named answer_{question_id}
     answers_dict = {}
     for key, value in form.items():
@@ -627,7 +648,9 @@ def mcq_result(
     # Get student ID
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 

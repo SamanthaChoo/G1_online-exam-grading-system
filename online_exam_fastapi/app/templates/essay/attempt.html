@@ -138,6 +138,28 @@
         return answers;
       }
 
+      // Auto-save function to save answers every 60 seconds
+      async function autoSaveAnswers(){
+        // Only auto-save if attempt is still in progress
+        if (attemptStatus !== 'in_progress') return;
+        if (localStorage.getItem(storageKey)) return;
+
+        const payload = { answers: collectAnswers() };
+        try{
+          await fetch(`/essay/exam/${examId}/autosave?student_id=${{{ attempt.student_id }}}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          console.log('Auto-save successful');
+        } catch(err){
+          console.error('Auto-save failed:', err);
+        }
+      }
+
+      // Auto-save every 10 seconds
+      setInterval(autoSaveAnswers, 10000);
+
       async function doAutoSubmit(){
         // prevent multiple auto-submits
         if (localStorage.getItem(storageKey)) return;
