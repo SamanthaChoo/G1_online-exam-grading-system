@@ -10,6 +10,8 @@ from app.routers import courses as courses_router_module
 from app.routers import essay as essay_router_module
 from app.routers import essay_ui as essay_ui_router
 from app.routers import exams as exams_router_module
+from pathlib import Path
+
 from fastapi import Depends, FastAPI, Query, Request, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse
@@ -28,14 +30,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 403:
         accept_header = request.headers.get("accept", "")
         if "text/html" in accept_header or request.method == "GET":
-            return RedirectResponse(
-                url="/?error=access_denied", status_code=status.HTTP_303_SEE_OTHER
-            )
+            return RedirectResponse(url="/?error=access_denied", status_code=status.HTTP_303_SEE_OTHER)
     # For 303 redirects (like login redirects), let them pass through
     if exc.status_code == 303 and exc.headers.get("Location"):
-        return RedirectResponse(
-            url=exc.headers["Location"], status_code=status.HTTP_303_SEE_OTHER
-        )
+        return RedirectResponse(url=exc.headers["Location"], status_code=status.HTTP_303_SEE_OTHER)
     # For other cases or API requests, use default behavior
     from fastapi.responses import JSONResponse
 
@@ -46,7 +44,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 app.add_middleware(SessionMiddleware, secret_key="CHANGE_ME_TO_A_RANDOM_SECRET")
 
 # Static + templates configuration
-from pathlib import Path
 BASE_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
