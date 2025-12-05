@@ -132,6 +132,7 @@ async def create_exam(
             # Check if start time is before today (current date/time)
             if start_dt:
                 from datetime import timezone, timedelta
+
                 # Get current time as UTC (timezone-aware) for comparison
                 now_aware = datetime.now(timezone.utc)
                 # Normalize start_dt to UTC (timezone-aware) for comparison
@@ -164,6 +165,7 @@ async def create_exam(
             # Normalize end_dt to naive UTC for database storage (consistent with start_dt)
             if end_dt:
                 from datetime import timezone
+
                 if end_dt.tzinfo is None:
                     # Already naive, assume UTC
                     pass
@@ -205,9 +207,7 @@ async def create_exam(
             "status_options": STATUS_OPTIONS,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     exam = Exam(
         title=title_clean,
@@ -224,9 +224,7 @@ async def create_exam(
     session.add(exam)
     session.commit()
     session.refresh(exam)
-    return RedirectResponse(
-        url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/course/{course_id}")
@@ -267,9 +265,7 @@ def exams_for_course(
     end_idx = start_idx + ITEMS_PER_PAGE
     exams_paginated = exams_sorted[start_idx:end_idx]
 
-    has_sort = (sort not in (None, "", "start")) or (
-        (direction or "asc").lower() != "asc"
-    )
+    has_sort = (sort not in (None, "", "start")) or ((direction or "asc").lower() != "asc")
 
     context = {
         "request": request,
@@ -400,6 +396,7 @@ async def update_exam(
             # Check if start time is before today (current date/time)
             if start_dt:
                 from datetime import timezone, timedelta
+
                 # Get current time as UTC (timezone-aware) for comparison
                 now_aware = datetime.now(timezone.utc)
                 # Normalize start_dt to UTC (timezone-aware) for comparison
@@ -432,6 +429,7 @@ async def update_exam(
             # Normalize end_dt to naive UTC for database storage (consistent with start_dt)
             if end_dt:
                 from datetime import timezone
+
                 if end_dt.tzinfo is None:
                     # Already naive, assume UTC
                     pass
@@ -472,9 +470,7 @@ async def update_exam(
             "status_options": STATUS_OPTIONS,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     exam.title = title_clean
     exam.subject = subject_clean
@@ -489,9 +485,7 @@ async def update_exam(
     session.add(exam)
     session.commit()
 
-    return RedirectResponse(
-        url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{exam_id}/start")

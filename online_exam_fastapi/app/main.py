@@ -31,14 +31,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 403:
         accept_header = request.headers.get("accept", "")
         if "text/html" in accept_header or request.method == "GET":
-            return RedirectResponse(
-                url="/?error=access_denied", status_code=status.HTTP_303_SEE_OTHER
-            )
+            return RedirectResponse(url="/?error=access_denied", status_code=status.HTTP_303_SEE_OTHER)
     # For 303 redirects (like login redirects), let them pass through
     if exc.status_code == 303 and exc.headers.get("Location"):
-        return RedirectResponse(
-            url=exc.headers["Location"], status_code=status.HTTP_303_SEE_OTHER
-        )
+        return RedirectResponse(url=exc.headers["Location"], status_code=status.HTTP_303_SEE_OTHER)
     # For other cases or API requests, use default behavior
     from fastapi.responses import JSONResponse
 

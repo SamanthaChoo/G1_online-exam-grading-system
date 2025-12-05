@@ -1,0 +1,15 @@
+# Development and Testing Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Code Quality
+flake8>=6.0.0
+black>=23.0.0
+mypy>=1.0.0
+
+# Security Scanning
+safety>=2.0.0
+bandit>=1.7.0

@@ -16,8 +16,8 @@ from app.models import Course, User, Exam
 
 @pytest.fixture
 def client():
-    """Create a test client."""
-    return TestClient(app)
+    """Create a test client that doesn't follow redirects."""
+    return TestClient(app, follow_redirects=False)
 
 
 @pytest.fixture
@@ -65,8 +65,7 @@ def test_create_mcq_success(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     assert resp_login.status_code == 303
     
@@ -80,8 +79,7 @@ def test_create_mcq_success(client, setup_course_and_lecturer):
             "option_c": "Berlin",
             "option_d": "Madrid",
             "correct_option": "B"
-        },
-        allow_redirects=False
+        }
     )
     assert resp.status_code == 303
 
@@ -98,8 +96,7 @@ def test_create_mcq_missing_option(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with missing option_b
@@ -130,8 +127,7 @@ def test_create_mcq_duplicate_options(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with duplicate options
@@ -162,8 +158,7 @@ def test_create_mcq_short_question(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with too-short question
@@ -194,8 +189,7 @@ def test_create_mcq_invalid_correct_option(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with invalid correct_option
@@ -226,8 +220,7 @@ def test_create_mcq_strip_html_tags(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with HTML/script tags
@@ -240,8 +233,7 @@ def test_create_mcq_strip_html_tags(client, setup_course_and_lecturer):
             "option_c": "Normal C",
             "option_d": "Normal D",
             "correct_option": "C"
-        },
-        allow_redirects=False
+        }
     )
     assert resp.status_code == 303
     
@@ -264,8 +256,7 @@ def test_create_mcq_all_options_empty(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with all empty options
@@ -295,8 +286,7 @@ def test_create_mcq_whitespace_only_option(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with whitespace-only option
@@ -326,8 +316,7 @@ def test_create_mcq_case_insensitive_correct_option(client, setup_course_and_lec
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with lowercase correct_option
@@ -340,8 +329,7 @@ def test_create_mcq_case_insensitive_correct_option(client, setup_course_and_lec
             "option_c": "Option C",
             "option_d": "Option D",
             "correct_option": "b"  # lowercase
-        },
-        allow_redirects=False
+        }
     )
     # Should succeed if case-insensitive, or fail with 400 if case-sensitive
     assert resp.status_code in [303, 400]
@@ -359,8 +347,7 @@ def test_create_mcq_very_long_question(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with very long question
@@ -374,8 +361,7 @@ def test_create_mcq_very_long_question(client, setup_course_and_lecturer):
             "option_c": "Option C",
             "option_d": "Option D",
             "correct_option": "A"
-        },
-        allow_redirects=False
+        }
     )
     # Should succeed or fail with validation error depending on max_length
     assert resp.status_code in [303, 400]
@@ -393,8 +379,7 @@ def test_create_mcq_special_characters(client, setup_course_and_lecturer):
             "login_type": "lecturer",
             "staff_id": "L100",
             "password": "Lect1!"
-        },
-        allow_redirects=False
+        }
     )
     
     # Create MCQ with special characters
@@ -407,7 +392,6 @@ def test_create_mcq_special_characters(client, setup_course_and_lecturer):
             "option_c": "Option with 中文",
             "option_d": "Normal option",
             "correct_option": "D"
-        },
-        allow_redirects=False
+        }
     )
     assert resp.status_code in [303, 400]
