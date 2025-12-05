@@ -34,27 +34,33 @@ def view_student_grades(
     page: Optional[int] = Query(1, ge=1),
 ):
     """Display all exam results and grades for the current student.
-    
+
     Features:
     - Shows both essay and MCQ exam results
     - Published vs unpublished exam results
     - Sorting by exam name, date, or score
     - Pagination
     """
-    
+
     try:
         if current_user.role != "student":
-            raise HTTPException(status_code=403, detail="Only students can view their grades")
+            raise HTTPException(
+                status_code=403, detail="Only students can view their grades"
+            )
 
         # Get student record - try multiple ways to find the student_id
-        student_id = getattr(current_user, 'student_id', None)
+        student_id = getattr(current_user, "student_id", None)
         if student_id is None:
-            s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+            s = session.exec(
+                select(Student).where(Student.user_id == current_user.id)
+            ).first()
             if s:
                 student_id = s.id
 
         if student_id is None:
-            raise HTTPException(status_code=404, detail="No linked student record found")
+            raise HTTPException(
+                status_code=404, detail="No linked student record found"
+            )
 
         student = session.get(Student, student_id)
         if not student:
@@ -84,7 +90,7 @@ def view_student_grades(
             # Calculate total marks awarded
             total_marks = sum((a.marks_awarded or 0) for a in answers)
             total_possible = 0
-            
+
             # Get total possible marks
             questions = session.exec(
                 select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
@@ -100,7 +106,11 @@ def view_student_grades(
                     "type": "Essay",
                     "score": total_marks,
                     "total": total_possible,
-                    "percentage": (total_marks / total_possible * 100) if total_possible > 0 else 0,
+                    "percentage": (
+                        (total_marks / total_possible * 100)
+                        if total_possible > 0
+                        else 0
+                    ),
                     "submitted_at": attempt.submitted_at or attempt.started_at,
                     "is_published": is_graded,  # Essay is "published" when graded
                     "sort_key": f"{exam.title.lower()}_{attempt.submitted_at or attempt.started_at}",
@@ -123,7 +133,11 @@ def view_student_grades(
                     "type": "MCQ",
                     "score": mcq_result.score,
                     "total": mcq_result.total_questions,
-                    "percentage": (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0,
+                    "percentage": (
+                        (mcq_result.score / mcq_result.total_questions * 100)
+                        if mcq_result.total_questions > 0
+                        else 0
+                    ),
                     "submitted_at": mcq_result.graded_at,
                     "is_published": True,  # MCQ results are always published (auto-graded)
                     "sort_key": f"{exam.title.lower()}_{mcq_result.graded_at}",
@@ -132,17 +146,26 @@ def view_student_grades(
 
         # Sort results based on user preference
         if sort == "date":
-            results.sort(key=lambda x: x["submitted_at"] or datetime.min, reverse=(direction == "desc"))
+            results.sort(
+                key=lambda x: x["submitted_at"] or datetime.min,
+                reverse=(direction == "desc"),
+            )
         elif sort == "exam":
-            results.sort(key=lambda x: x["exam"].title.lower(), reverse=(direction == "desc"))
+            results.sort(
+                key=lambda x: x["exam"].title.lower(), reverse=(direction == "desc")
+            )
         elif sort == "score":
             results.sort(key=lambda x: x["percentage"], reverse=(direction == "desc"))
 
         # Pagination
         total_results = len(results)
-        total_pages = (total_results + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_results > 0 else 1
+        total_pages = (
+            (total_results + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+            if total_results > 0
+            else 1
+        )
         page = min(page, total_pages) if total_pages > 0 else 1
-        
+
         start_idx = (page - 1) * ITEMS_PER_PAGE
         end_idx = start_idx + ITEMS_PER_PAGE
         paginated_results = results[start_idx:end_idx]
@@ -165,6 +188,7 @@ def view_student_grades(
         raise
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error loading grades: {str(e)}")
 
@@ -190,20 +214,24 @@ def view_grades(
     current_user: User = Depends(require_login),
 ):
     """Display published exam results for the current student."""
-    
+
     try:
         if current_user.role != "student":
             raise HTTPException(status_code=403, detail="Only students can view grades")
 
         # Get student record
-        student_id = getattr(current_user, 'student_id', None)
+        student_id = getattr(current_user, "student_id", None)
         if student_id is None:
-            s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+            s = session.exec(
+                select(Student).where(Student.user_id == current_user.id)
+            ).first()
             if s:
                 student_id = s.id
 
         if student_id is None:
-            raise HTTPException(status_code=404, detail="No linked student record found")
+            raise HTTPException(
+                status_code=404, detail="No linked student record found"
+            )
 
         results = []
 
@@ -217,16 +245,26 @@ def view_grades(
             if not exam:
                 continue
 
-            percentage = (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
+            percentage = (
+                (mcq_result.score / mcq_result.total_questions * 100)
+                if mcq_result.total_questions > 0
+                else 0
+            )
             grade = calculate_grade(percentage)
 
-            results.append({
-                "exam_title": exam.title,
-                "score": mcq_result.score,
-                "total_score": mcq_result.total_questions,
-                "grade": grade,
-                "published_date": mcq_result.graded_at.strftime("%Y-%m-%d %H:%M") if mcq_result.graded_at else "-",
-            })
+            results.append(
+                {
+                    "exam_title": exam.title,
+                    "score": mcq_result.score,
+                    "total_score": mcq_result.total_questions,
+                    "grade": grade,
+                    "published_date": (
+                        mcq_result.graded_at.strftime("%Y-%m-%d %H:%M")
+                        if mcq_result.graded_at
+                        else "-"
+                    ),
+                }
+            )
 
         # Get published essay results (only those that have been graded)
         essay_attempts = session.exec(
@@ -252,23 +290,31 @@ def view_grades(
                 continue  # Skip ungraded essays
 
             total_marks = sum((a.marks_awarded or 0) for a in answers)
-            
+
             # Get total possible marks
             questions = session.exec(
                 select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
             ).all()
             total_possible = sum((q.max_marks or 0) for q in questions)
 
-            percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
+            percentage = (
+                (total_marks / total_possible * 100) if total_possible > 0 else 0
+            )
             grade = calculate_grade(percentage)
 
-            results.append({
-                "exam_title": exam.title,
-                "score": total_marks,
-                "total_score": total_possible,
-                "grade": grade,
-                "published_date": attempt.submitted_at.strftime("%Y-%m-%d %H:%M") if attempt.submitted_at else "-",
-            })
+            results.append(
+                {
+                    "exam_title": exam.title,
+                    "score": total_marks,
+                    "total_score": total_possible,
+                    "grade": grade,
+                    "published_date": (
+                        attempt.submitted_at.strftime("%Y-%m-%d %H:%M")
+                        if attempt.submitted_at
+                        else "-"
+                    ),
+                }
+            )
 
         context = {
             "request": request,
@@ -276,10 +322,11 @@ def view_grades(
             "current_user": current_user,
         }
         return templates.TemplateResponse("view_grades.html", context)
-    
+
     except HTTPException:
         raise
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error loading grades: {str(e)}")
