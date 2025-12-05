@@ -335,3 +335,145 @@ def reactivate_admin(
             "message": "Admin account reactivated successfully. You can now log in."
         }
     return {"message": "Admin account not found."}
+
+
+@router.get("/performance-report")
+def performance_summary_report(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_role(["admin"])),
+):
+    """Generate student performance summary report by subject.
+    
+    Shows:
+    - Average score per subject
+    - Pass rate per subject
+    - Number of students who took the exam
+    - Highest/lowest scores
+    """
+    from app.models import Exam, ExamAttempt, EssayAnswer, ExamQuestion, MCQResult
+    from datetime import datetime
+    
+    try:
+        # Dictionary to store subject-wise performance data
+        subject_data: dict = {}
+        
+        # Collect MCQ results
+        mcq_results = session.exec(select(MCQResult)).all()
+        
+        for mcq_result in mcq_results:
+            exam = session.get(Exam, mcq_result.exam_id)
+            if not exam or not exam.subject:
+                continue
+            
+            subject = exam.subject
+            percentage = (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
+            is_passed = percentage >= 60  # Pass threshold: 60%
+            
+            if subject not in subject_data:
+                subject_data[subject] = {
+                    "subject": subject,
+                    "total_students": 0,
+                    "total_score": 0,
+                    "passed_count": 0,
+                    "scores": [],
+                    "exam_types": set(),
+                }
+            
+            subject_data[subject]["total_students"] += 1
+            subject_data[subject]["total_score"] += percentage
+            subject_data[subject]["scores"].append(percentage)
+            subject_data[subject]["exam_types"].add("MCQ")
+            
+            if is_passed:
+                subject_data[subject]["passed_count"] += 1
+        
+        # Collect Essay results
+        essay_attempts = session.exec(
+            select(ExamAttempt).where(ExamAttempt.status.in_(["submitted", "timed_out"]))
+        ).all()
+        
+        for attempt in essay_attempts:
+            exam = session.get(Exam, attempt.exam_id)
+            if not exam or not exam.subject:
+                continue
+            
+            # Check if graded
+            answers = session.exec(
+                select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)
+            ).all()
+            
+            is_graded = any(a.marks_awarded is not None for a in answers)
+            if not is_graded:
+                continue  # Skip ungraded essays
+            
+            total_marks = sum((a.marks_awarded or 0) for a in answers)
+            
+            # Get total possible marks
+            questions = session.exec(
+                select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
+            ).all()
+            total_possible = sum((q.max_marks or 0) for q in questions)
+            
+            percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
+            is_passed = percentage >= 60
+            
+            subject = exam.subject
+            
+            if subject not in subject_data:
+                subject_data[subject] = {
+                    "subject": subject,
+                    "total_students": 0,
+                    "total_score": 0,
+                    "passed_count": 0,
+                    "scores": [],
+                    "exam_types": set(),
+                }
+            
+            subject_data[subject]["total_students"] += 1
+            subject_data[subject]["total_score"] += percentage
+            subject_data[subject]["scores"].append(percentage)
+            subject_data[subject]["exam_types"].add("Essay")
+            
+            if is_passed:
+                subject_data[subject]["passed_count"] += 1
+        
+        # Calculate averages and pass rates
+        report_data = []
+        
+        for subject, data in sorted(subject_data.items()):
+            if data["total_students"] == 0:
+                continue
+            
+            avg_score = data["total_score"] / data["total_students"]
+            pass_rate = (data["passed_count"] / data["total_students"] * 100)
+            highest_score = max(data["scores"]) if data["scores"] else 0
+            lowest_score = min(data["scores"]) if data["scores"] else 0
+            
+            report_data.append({
+                "subject": subject,
+                "average_score": f"{avg_score:.2f}",
+                "pass_rate": f"{pass_rate:.1f}",
+                "total_students": data["total_students"],
+                "passed_count": data["passed_count"],
+                "highest_score": f"{highest_score:.2f}",
+                "lowest_score": f"{lowest_score:.2f}",
+                "exam_types": ", ".join(sorted(data["exam_types"])),
+            })
+        
+        context = {
+            "request": request,
+            "report_data": report_data,
+            "total_subjects": len(report_data),
+            "current_user": current_user,
+            "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        
+        return templates.TemplateResponse("admin/performance_report.html", context)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")

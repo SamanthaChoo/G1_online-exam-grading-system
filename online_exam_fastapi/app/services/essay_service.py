@@ -19,7 +19,7 @@ def get_exam(session: Session, exam_id: int) -> Optional[Exam]:
 
 
 def add_question(
-    session: Session, exam_id: int, question_text: str, max_marks: int, allow_negative_marks: bool = False
+    session: Session, exam_id: int, question_text: str, max_marks: int
 ) -> ExamQuestion:
     # Ensure the target exam exists before adding the question
     exam = session.get(Exam, exam_id)
@@ -40,8 +40,7 @@ def add_question(
     q = ExamQuestion(
         exam_id=exam_id,
         question_text=sanitized_text,
-        max_marks=max_marks,
-        allow_negative_marks=allow_negative_marks
+        max_marks=max_marks
     )
     session.add(q)
     session.commit()
@@ -202,14 +201,14 @@ def grade_attempt(
         qid = s.get("question_id")
         marks = s.get("marks")
         
-        # Get the question to check max_marks and allow_negative_marks
+        # Get the question to check max_marks
         question = session.get(ExamQuestion, qid)
         if not question:
             raise ValueError(f"Question {qid} does not exist")
         
         # Validate marks are in range
         try:
-            validate_marks(marks, question.max_marks, question.allow_negative_marks)
+            validate_marks(marks, question.max_marks)
         except ValueError as e:
             raise ValueError(f"Question {qid}: {str(e)}")
         

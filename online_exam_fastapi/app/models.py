@@ -109,7 +109,8 @@ class EssayAnswer(SQLModel, table=True):
     attempt_id: int = Field(foreign_key="examattempt.id")
     question_id: int = Field(foreign_key="examquestion.id")
     answer_text: Optional[str] = None
-    marks_awarded: Optional[int] = None
+    marks_awarded: Optional[float] = None
+    grader_feedback: Optional[str] = None
 
 
 class CourseLecturer(SQLModel, table=True):

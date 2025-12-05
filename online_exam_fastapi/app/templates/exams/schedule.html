@@ -15,28 +15,26 @@
       </tr>
     </thead>
     <tbody>
-      {% for item in exams %}
+      {% for exam in exams %}
       <tr>
-        <td>{{ item.exam.title }}</td>
-        <td>{{ item.exam.subject }}</td>
-        <td>{{ item.exam.start_time.strftime('%Y-%m-%d %H:%M') if item.exam.start_time else 'N/A' }}</td>
-        <td>{{ item.exam.duration_minutes }}</td>
+        <td>{{ exam.title }}</td>
+        <td>{{ exam.subject }}</td>
+        <td>{{ exam.start_time.strftime('%Y-%m-%d %H:%M') if exam.start_time else 'N/A' }}</td>
+        <td>{{ exam.duration_minutes }}</td>
         <td>
-          {% if item.status == 'upcoming' %}
-            <span class="badge bg-secondary">Upcoming</span>
-          {% elif item.status == 'starting soon' %}
-            <span class="badge bg-warning text-dark">Starting Soon</span>
-          {% elif item.status == 'ongoing' %}
+          {% if exam.status == 'scheduled' %}
+            <span class="badge bg-secondary">Scheduled</span>
+          {% elif exam.status == 'ongoing' %}
             <span class="badge bg-success">Ongoing</span>
-          {% elif item.status == 'ended' %}
-            <span class="badge bg-danger">Ended</span>
+          {% elif exam.status == 'completed' %}
+            <span class="badge bg-danger">Completed</span>
           {% else %}
-            <span class="badge bg-light text-dark">Unscheduled</span>
+            <span class="badge bg-light text-dark">{{ exam.status }}</span>
           {% endif %}
         </td>
         <td>
-          {% if item.status in ['starting soon', 'ongoing'] %}
-            <a href="/exams/{{ item.exam.id }}/start?student_id={{ student.id }}" class="btn btn-primary btn-sm">Start/Join</a>
+          {% if exam.status == 'scheduled' %}
+            <a href="/exams/{{ exam.id }}/start?student_id={{ student.id }}" class="btn btn-primary btn-sm">Start Exam</a>
           {% else %}
             <span class="text-muted">-</span>
           {% endif %}

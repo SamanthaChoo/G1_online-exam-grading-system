@@ -25,13 +25,12 @@ def sanitize_feedback(text: str) -> str:
     return sanitized.strip()
 
 
-def validate_marks(marks: float, max_marks: int, allow_negative: bool = False) -> bool:
+def validate_marks(marks: float, max_marks: int) -> bool:
     """Validate that marks_awarded is within acceptable range.
     
     Args:
         marks: The marks awarded
         max_marks: Maximum allowed marks for the question
-        allow_negative: Whether negative marks are allowed
         
     Returns:
         True if valid, raises ValueError if not
@@ -39,11 +38,9 @@ def validate_marks(marks: float, max_marks: int, allow_negative: bool = False) -
     Raises:
         ValueError: If marks exceed valid range
     """
-    min_marks = 0 if not allow_negative else -max_marks
-    
-    if marks < min_marks or marks > max_marks:
+    if marks < 0 or marks > max_marks:
         raise ValueError(
-            f"Marks {marks} out of range [{min_marks}, {max_marks}]"
+            f"Marks {marks} out of range [0, {max_marks}]"
         )
     
     return True

@@ -167,3 +167,119 @@ def view_student_grades(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error loading grades: {str(e)}")
+
+
+def calculate_grade(percentage: float) -> str:
+    """Convert percentage to letter grade (A/B/C/D/F)."""
+    if percentage >= 90:
+        return "A"
+    elif percentage >= 80:
+        return "B"
+    elif percentage >= 70:
+        return "C"
+    elif percentage >= 60:
+        return "D"
+    else:
+        return "F"
+
+
+@router.get("/grades")
+def view_grades(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_login),
+):
+    """Display published exam results for the current student."""
+    
+    try:
+        if current_user.role != "student":
+            raise HTTPException(status_code=403, detail="Only students can view grades")
+
+        # Get student record
+        student_id = getattr(current_user, 'student_id', None)
+        if student_id is None:
+            s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+            if s:
+                student_id = s.id
+
+        if student_id is None:
+            raise HTTPException(status_code=404, detail="No linked student record found")
+
+        results = []
+
+        # Get published MCQ results (all MCQ results are published as they're auto-graded)
+        mcq_results = session.exec(
+            select(MCQResult).where(MCQResult.student_id == student_id)
+        ).all()
+
+        for mcq_result in mcq_results:
+            exam = session.get(Exam, mcq_result.exam_id)
+            if not exam:
+                continue
+
+            percentage = (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
+            grade = calculate_grade(percentage)
+
+            results.append({
+                "exam_title": exam.title,
+                "score": mcq_result.score,
+                "total_score": mcq_result.total_questions,
+                "grade": grade,
+                "published_date": mcq_result.graded_at.strftime("%Y-%m-%d %H:%M") if mcq_result.graded_at else "-",
+            })
+
+        # Get published essay results (only those that have been graded)
+        essay_attempts = session.exec(
+            select(ExamAttempt).where(
+                (ExamAttempt.student_id == student_id)
+                & (ExamAttempt.status.in_(["submitted", "timed_out"]))
+            )
+        ).all()
+
+        for attempt in essay_attempts:
+            exam = session.get(Exam, attempt.exam_id)
+            if not exam:
+                continue
+
+            # Get answers for this attempt
+            answers = session.exec(
+                select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)
+            ).all()
+
+            # Check if graded (any answer has marks_awarded set)
+            is_graded = any(a.marks_awarded is not None for a in answers)
+            if not is_graded:
+                continue  # Skip ungraded essays
+
+            total_marks = sum((a.marks_awarded or 0) for a in answers)
+            
+            # Get total possible marks
+            questions = session.exec(
+                select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
+            ).all()
+            total_possible = sum((q.max_marks or 0) for q in questions)
+
+            percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
+            grade = calculate_grade(percentage)
+
+            results.append({
+                "exam_title": exam.title,
+                "score": total_marks,
+                "total_score": total_possible,
+                "grade": grade,
+                "published_date": attempt.submitted_at.strftime("%Y-%m-%d %H:%M") if attempt.submitted_at else "-",
+            })
+
+        context = {
+            "request": request,
+            "results": results,
+            "current_user": current_user,
+        }
+        return templates.TemplateResponse("view_grades.html", context)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error loading grades: {str(e)}")

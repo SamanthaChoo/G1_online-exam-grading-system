@@ -10,6 +10,7 @@ from app.routers import courses as courses_router_module
 from app.routers import essay as essay_router_module
 from app.routers import essay_ui as essay_ui_router
 from app.routers import exams as exams_router_module
+from app.routers import lecturer as lecturer_router_module
 from app.routers import mcq as mcq_router_module
 from app.routers import student as student_router_module
 from fastapi import Depends, FastAPI, Query, Request, status
@@ -54,6 +55,7 @@ templates = Jinja2Templates(directory="app/templates")
 # Routers
 app.include_router(auth_router_module.router, prefix="/auth", tags=["auth"])
 app.include_router(admin_router_module.router, prefix="/admin", tags=["admin"])
+app.include_router(lecturer_router_module.router, prefix="/lecturer", tags=["lecturer"])
 app.include_router(courses_router_module.router, prefix="/courses", tags=["courses"])
 app.include_router(exams_router_module.router, prefix="/exams", tags=["exams"])
 app.include_router(mcq_router_module.router, prefix="/exams", tags=["mcq"])

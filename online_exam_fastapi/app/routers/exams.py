@@ -492,3 +492,153 @@ async def update_exam(
     return RedirectResponse(
         url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
     )
+
+
+@router.get("/{exam_id}/start")
+def start_exam(
+    request: Request,
+    exam_id: int,
+    student_id: int = Query(...),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Start an exam attempt - redirect to MCQ or essay based on exam type."""
+    from app.models import Student
+    
+    try:
+        # Verify exam exists
+        exam = session.get(Exam, exam_id)
+        if not exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        
+        # Verify student exists
+        student = session.get(Student, student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Check if exam has MCQ questions
+        from app.models import MCQQuestion
+        mcq_count = session.exec(
+            select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
+        ).first()
+        
+        # Redirect to appropriate exam type
+        if mcq_count:
+            # Has MCQ questions
+            return RedirectResponse(
+                url=f"/exams/{exam_id}/mcq/start?student_id={student_id}",
+                status_code=303
+            )
+        else:
+            # Essay exam
+            return RedirectResponse(
+                url=f"/essay/{exam_id}/start?student_id={student_id}",
+                status_code=303
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error starting exam: {str(e)}")
+
+
+@router.get("/schedule/student/{student_id}")
+def view_exam_schedule(
+    request: Request,
+    student_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Display exam schedule for a student showing all exams in their enrolled courses."""
+    from app.models import Student, Enrollment
+    
+    try:
+        # Verify student exists
+        student = session.get(Student, student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Get student's enrolled courses
+        enrollments = session.exec(
+            select(Enrollment).where(Enrollment.student_id == student_id)
+        ).all()
+        
+        course_ids = [enrollment.course_id for enrollment in enrollments]
+        
+        # Get all exams from enrolled courses, sorted by start_time
+        exams = []
+        if course_ids:
+            exams = session.exec(
+                select(Exam)
+                .where(Exam.course_id.in_(course_ids))
+                .where(Exam.status.in_(["scheduled", "completed"]))
+                .order_by(Exam.start_time)
+            ).all()
+        
+        context = {
+            "request": request,
+            "student": student,
+            "exams": exams,
+            "current_user": current_user,
+        }
+        return templates.TemplateResponse("exams/schedule.html", context)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error loading schedule: {str(e)}")
+
+
+@router.get("/schedule/student/{student_id}")
+def student_exam_schedule(
+    request: Request,
+    student_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Display exam schedule for a specific student."""
+    from app.models import Student, Enrollment
+    
+    try:
+        # Get student record
+        student = session.get(Student, student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Get enrolled courses
+        enrollments = session.exec(
+            select(Enrollment).where(Enrollment.student_id == student_id)
+        ).all()
+        
+        course_ids = [e.course_id for e in enrollments]
+        
+        # Get exams for enrolled courses
+        if course_ids:
+            exams = session.exec(
+                select(Exam)
+                .where(Exam.course_id.in_(course_ids))
+                .where(Exam.status == "scheduled")
+                .order_by(Exam.start_time)
+            ).all()
+        else:
+            exams = []
+        
+        context = {
+            "request": request,
+            "student": student,
+            "exams": exams,
+            "current_user": current_user,
+        }
+        return templates.TemplateResponse("exams/schedule.html", context)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error loading exam schedule: {str(e)}")
+

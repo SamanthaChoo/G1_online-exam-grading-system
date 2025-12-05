@@ -112,11 +112,10 @@ def create_question(
     exam_id: int,
     question_text: str = Form(...),
     max_marks: int = Form(...),
-    allow_negative_marks: bool = Form(default=False),
     session: Session = Depends(get_session),
 ):
     try:
-        add_question(session, exam_id, question_text, max_marks, allow_negative_marks)
+        add_question(session, exam_id, question_text, max_marks)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
@@ -392,6 +391,9 @@ def grade_form(
     if attempt and attempt.student_id is not None:
         student = session.get(Student, attempt.student_id)
 
+    # Check if all answers are graded (all have marks_awarded set)
+    is_graded = all(a.marks_awarded is not None for a in answers) if answers else False
+
     return templates.TemplateResponse(
         "essay/grade.html",
         {
@@ -401,6 +403,7 @@ def grade_form(
             "questions": questions,
             "answers_map": answers_map,
             "student": student,
+            "is_graded": is_graded,
         },
     )
 

@@ -1,6 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script>
+  function validateForm() {
+    const name = document.querySelector('input[name="name"]');
+    const staffId = document.querySelector('input[name="staff_id"]');
+    const email = document.querySelector('input[name="email"]');
+    const password = document.querySelector('input[name="password"]');
+    
+    if (!name.value.trim()) {
+      alert('Full Name is required');
+      name.focus();
+      return false;
+    }
+    if (!staffId.value.trim()) {
+      alert('Staff ID is required');
+      staffId.focus();
+      return false;
+    }
+    if (!email.value.trim()) {
+      alert('Email is required');
+      email.focus();
+      return false;
+    }
+    if (!password.value.trim()) {
+      alert('Password is required');
+      password.focus();
+      return false;
+    }
+    if (password.value.length < 8) {
+      alert('Password must be at least 8 characters long');
+      password.focus();
+      return false;
+    }
+    return true;
+  }
+</script>
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card shadow-sm">
@@ -21,7 +56,7 @@
                     </div>
                 </div>
                 {% endif %}
-                <form method="post" novalidate>
+                <form method="post" onsubmit="return validateForm()" novalidate>
                     <div class="row">
                         <div class="col-md-3 mb-3">
                             <label class="form-label">Title <span class="text-muted small">(Optional)</span></label>
