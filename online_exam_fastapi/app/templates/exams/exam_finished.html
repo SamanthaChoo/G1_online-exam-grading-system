@@ -4,7 +4,29 @@
 <div class="container mt-4">
   <div class="alert alert-success">
     <h2>Exam Submitted!</h2>
-    <p>Your answers have been submitted and graded. You may close this window.</p>
+    <p>Your answers have been submitted and graded.</p>
+    {% if score is not none and total is not none %}
+    <hr>
+    <h3>Your Results:</h3>
+    <div class="card mt-3">
+      <div class="card-body">
+        <h4 class="card-title">Score: {{ score }} / {{ total }}</h4>
+        <h5 class="card-subtitle mb-2 text-muted">Percentage: {{ "%.1f"|format((score / total * 100)) }}%</h5>
+        {% set percentage = (score / total * 100) %}
+        <div class="progress" style="height: 30px;">
+          <div class="progress-bar {% if percentage >= 80 %}bg-success{% elif percentage >= 60 %}bg-info{% elif percentage >= 40 %}bg-warning{% else %}bg-danger{% endif %}" 
+               role="progressbar" 
+               style="width: {{ percentage }}%" 
+               aria-valuenow="{{ percentage }}" 
+               aria-valuemin="0" 
+               aria-valuemax="100">
+            {{ "%.1f"|format(percentage) }}%
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
+  <a href="/" class="btn btn-primary mt-3">Back to Home</a>
 </div>
 {% endblock %}

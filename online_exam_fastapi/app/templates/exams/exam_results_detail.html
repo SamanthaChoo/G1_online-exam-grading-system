@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}Exam Results - {{ exam.title }}{% endblock %}
+{% block content %}
+
+<style>
+  .exam-detail-header {
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    box-shadow: 0 0.5rem 1rem rgba(79, 172, 254, 0.3);
+  }
+  .stats-overview {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+  .stat-item {
+    text-align: center;
+    padding: 1rem;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    display: block;
+  }
+  .stat-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .student-row {
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: white;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s;
+  }
+  .student-row:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+  }
+  .rank-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .rank-1 { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: white; }
+  .rank-2 { background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%); color: white; }
+  .rank-3 { background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%); color: white; }
+  .rank-other { background: #e9ecef; color: #6c757d; }
+  
+  .score-bar {
+    height: 8px;
+    border-radius: 1rem;
+    background: #e9ecef;
+    overflow: hidden;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 1rem;
+    transition: width 0.5s ease;
+  }
+</style>
+
+<div class="container py-4">
+  <!-- Header Card -->
+  <div class="card border-0 exam-detail-header mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <h2 class="h3 mb-2">
+            <i class="bi bi-clipboard-data me-2"></i>{{ exam.title }}
+          </h2>
+          <p class="mb-1 opacity-90">
+            <i class="bi bi-bookmark me-2"></i>{{ course.name }} ({{ course.code }})
+          </p>
+          <p class="mb-0 opacity-75 small">
+            <i class="bi bi-card-text me-2"></i>{{ exam.subject }}
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/exams/results/course/{{ course.id }}" class="btn btn-light">
+            <i class="bi bi-arrow-left me-2"></i>Course Results
+          </a>
+          <a href="/exams/{{ exam.id }}" class="btn btn-light">
+            <i class="bi bi-eye me-2"></i>Exam Details
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Overview -->
+  <div class="stats-overview mb-4">
+    <div class="row g-0">
+      <div class="col-md-3 col-6">
+        <div class="stat-item">
+          <span class="stat-value text-primary">{{ total_students }}</span>
+          <span class="stat-label">Total Students</span>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="stat-item">
+          <span class="stat-value text-success">{{ "%.1f"|format(avg_percentage) }}%</span>
+          <span class="stat-label">Average Score</span>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="stat-item">
+          <span class="stat-value text-info">{{ highest_score }}/{{ total_questions }}</span>
+          <span class="stat-label">Highest Score</span>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="stat-item">
+          <span class="stat-value text-warning">{{ "%.1f"|format(pass_rate) }}%</span>
+          <span class="stat-label">Pass Rate (≥50%)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if student_results %}
+  <!-- Student Results List -->
+  <div class="card border-0 shadow-sm" style="border-radius: 1rem;">
+    <div class="card-header bg-white border-bottom" style="border-radius: 1rem 1rem 0 0;">
+      <h5 class="mb-0">
+        <i class="bi bi-people-fill me-2"></i>Student Performance Ranking
+      </h5>
+    </div>
+    <div class="card-body p-3">
+      {% for item in student_results %}
+      <div class="student-row">
+        <div class="row align-items-center">
+          <!-- Rank -->
+          <div class="col-auto">
+            {% set rank = loop.index %}
+            <div class="rank-badge {% if rank == 1 %}rank-1{% elif rank == 2 %}rank-2{% elif rank == 3 %}rank-3{% else %}rank-other{% endif %}">
+              {{ rank }}
+            </div>
+          </div>
+
+          <!-- Student Info -->
+          <div class="col">
+            <div class="d-flex flex-column">
+              <strong class="mb-1">{{ item.student.name }}</strong>
+              <small class="text-muted">
+                <i class="bi bi-person-badge me-1"></i>{{ item.student.matric_no }}
+              </small>
+            </div>
+          </div>
+
+          <!-- Score Info -->
+          <div class="col-md-4">
+            <div class="d-flex align-items-center gap-2">
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between mb-1">
+                  <small class="text-muted">Score</small>
+                  <small class="fw-bold">{{ item.result.score }}/{{ item.result.total_questions }}</small>
+                </div>
+                <div class="score-bar">
+                  {% set percentage = item.percentage %}
+                  {% if percentage >= 80 %}
+                    <div class="score-fill bg-success" style="width: {{ percentage }}%"></div>
+                  {% elif percentage >= 60 %}
+                    <div class="score-fill bg-info" style="width: {{ percentage }}%"></div>
+                  {% elif percentage >= 50 %}
+                    <div class="score-fill bg-warning" style="width: {{ percentage }}%"></div>
+                  {% else %}
+                    <div class="score-fill bg-danger" style="width: {{ percentage }}%"></div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Percentage Badge -->
+          <div class="col-auto">
+            {% if percentage >= 80 %}
+              <span class="badge bg-success" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                {{ "%.1f"|format(percentage) }}%
+              </span>
+            {% elif percentage >= 60 %}
+              <span class="badge bg-info" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                {{ "%.1f"|format(percentage) }}%
+              </span>
+            {% elif percentage >= 50 %}
+              <span class="badge bg-warning text-dark" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                {{ "%.1f"|format(percentage) }}%
+              </span>
+            {% else %}
+              <span class="badge bg-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                {{ "%.1f"|format(percentage) }}%
+              </span>
+            {% endif %}
+          </div>
+
+          <!-- Graded Date -->
+          <div class="col-auto">
+            <small class="text-muted">
+              <i class="bi bi-clock me-1"></i>{{ item.result.graded_at.strftime('%d %b, %H:%M') }}
+            </small>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <!-- Empty State -->
+  <div class="card border-0 shadow-sm" style="border-radius: 1rem;">
+    <div class="card-body text-center py-5">
+      <div class="mb-4">
+        <i class="bi bi-clipboard-x" style="font-size: 5rem; color: #dee2e6;"></i>
+      </div>
+      <h4 class="text-muted mb-3">No Results Yet</h4>
+      <p class="text-muted mb-4">
+        No students have completed this exam yet.<br>
+        Results will appear here once students submit their answers.
+      </p>
+      <a href="/exams/results/course/{{ course.id }}" class="btn btn-primary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Course Results
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

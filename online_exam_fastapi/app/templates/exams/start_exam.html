@@ -18,19 +18,21 @@
     </div>
     {% if countdown is not none and countdown > 0 %}
     <script>
-      let remainingSeconds = {{ countdown|tojson }};
-      const countdownEl = document.getElementById('countdown');
-      const joinBtn = document.getElementById('joinBtn');
-      function updateCountdown() {
-        if (remainingSeconds > 0) {
-          remainingSeconds--;
-          countdownEl.textContent = remainingSeconds;
-        } else {
-          joinBtn.disabled = false;
-          countdownEl.textContent = '0';
+      (function() {
+        let remainingSeconds = {{ countdown }};
+        const countdownEl = document.getElementById('countdown');
+        const joinBtn = document.getElementById('joinBtn');
+        function updateCountdown() {
+          if (remainingSeconds > 0) {
+            remainingSeconds--;
+            countdownEl.textContent = remainingSeconds;
+          } else {
+            joinBtn.disabled = false;
+            countdownEl.textContent = '0';
+          }
         }
-      }
-      setInterval(updateCountdown, 1000);
+        setInterval(updateCountdown, 1000);
+      })();
     </script>
     {% endif %}
   {% else %}

@@ -69,13 +69,13 @@ function updateTimer() {
     let min = Math.floor(timeLeft / 60);
     let sec = timeLeft % 60;
     timeLeftEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
-    if (timeLeft % 60 === 0) autoSave();
   } else {
     submitExam(true);
   }
 }
 setInterval(updateTimer, 1000);
 
+// Auto-save every 60 seconds
 function autoSave() {
   const form = document.getElementById('mcqForm');
   const data = new FormData(form);
@@ -87,8 +87,13 @@ function autoSave() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ student_id: mcqData.student_id, answers })
+  }).catch(err => {
+    console.error('Auto-save failed:', err);
   });
 }
+
+// Auto-save every 10 seconds
+setInterval(autoSave, 10000);
 
 function submitExam(auto=false) {
   const form = document.getElementById('mcqForm');
@@ -102,7 +107,11 @@ function submitExam(auto=false) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ student_id: mcqData.student_id, answers })
   }).then(r => r.json()).then(res => {
-    window.location.href = '/exams/exam_finished';
+    // Redirect to exam_finished page with grade data
+    window.location.href = `/exams/exam_finished?score=${res.score}&total=${res.total}`;
+  }).catch(err => {
+    console.error('Submit failed:', err);
+    alert('Error submitting exam. Please try again.');
   });
 }
 </script>

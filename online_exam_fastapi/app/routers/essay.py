@@ -15,10 +15,12 @@ from app.services.essay_service import (
     start_attempt,
     submit_answers,
     timeout_attempt,
+    _find_in_progress_attempt,
 )
+from app.models import EssayAnswer
 from fastapi import APIRouter, Body, Depends, Query
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 router = APIRouter()
 
@@ -135,6 +137,43 @@ def api_submit(
         "status": attempt.status,
         "submitted_at": attempt.submitted_at,
     }
+
+
+# 4.5) AUTO-SAVE ANSWERS (periodic save without submission)
+class AutoSavePayload(BaseModel):
+    answers: List[AnswerIn]
+
+
+@router.post("/exam/{exam_id}/autosave")
+def api_autosave(
+    exam_id: int,
+    student_id: int = Query(...),
+    payload: AutoSavePayload = Body(...),
+    session: Session = Depends(get_session),
+):
+    """Auto-save essay answers without submitting the attempt."""
+    # Find or create an in-progress attempt
+    attempt = _find_in_progress_attempt(session, exam_id, student_id)
+    if not attempt:
+        attempt = start_attempt(session, exam_id, student_id)
+    
+    # Upsert answers without changing attempt status
+    for a in payload.answers:
+        qid = a.question_id
+        text = a.answer_text
+        stmt = select(EssayAnswer).where(
+            (EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid)
+        )
+        existing = session.exec(stmt).first()
+        if existing:
+            existing.answer_text = text
+            session.add(existing)
+        else:
+            new = EssayAnswer(attempt_id=attempt.id, question_id=qid, answer_text=text)
+            session.add(new)
+    
+    session.commit()
+    return {"status": "success", "attempt_id": attempt.id}
 
 
 # 5) AUTO-SUBMIT ON TIMEOUT
