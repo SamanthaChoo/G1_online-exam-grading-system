@@ -9,3 +9,15 @@ __pycache__/
 # IDE settings (optional but recommended)
 .vscode/
 .idea/
+
+# Database files (should not be committed)
+*.db
+*.sqlite
+*.sqlite3
+
+# Image assets (if these are temporary screenshots, consider removing)
+# Uncomment if you want to ignore all images:
+# *.png
+# *.jpg
+# *.jpeg
+# assets/
