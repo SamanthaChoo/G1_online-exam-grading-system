@@ -44,23 +44,17 @@ def view_student_grades(
 
     try:
         if current_user.role != "student":
-            raise HTTPException(
-                status_code=403, detail="Only students can view their grades"
-            )
+            raise HTTPException(status_code=403, detail="Only students can view their grades")
 
         # Get student record - try multiple ways to find the student_id
         student_id = getattr(current_user, "student_id", None)
         if student_id is None:
-            s = session.exec(
-                select(Student).where(Student.user_id == current_user.id)
-            ).first()
+            s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
             if s:
                 student_id = s.id
 
         if student_id is None:
-            raise HTTPException(
-                status_code=404, detail="No linked student record found"
-            )
+            raise HTTPException(status_code=404, detail="No linked student record found")
 
         student = session.get(Student, student_id)
         if not student:
@@ -72,8 +66,7 @@ def view_student_grades(
         # Get essay attempts with grades
         essay_attempts = session.exec(
             select(ExamAttempt).where(
-                (ExamAttempt.student_id == student_id)
-                & (ExamAttempt.status.in_(["submitted", "timed_out"]))
+                (ExamAttempt.student_id == student_id) & (ExamAttempt.status.in_(["submitted", "timed_out"]))
             )
         ).all()
 
@@ -83,18 +76,14 @@ def view_student_grades(
                 continue
 
             # Get answers for this attempt
-            answers = session.exec(
-                select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)
-            ).all()
+            answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)).all()
 
             # Calculate total marks awarded
             total_marks = sum((a.marks_awarded or 0) for a in answers)
             total_possible = 0
 
             # Get total possible marks
-            questions = session.exec(
-                select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
-            ).all()
+            questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)).all()
             total_possible = sum((q.max_marks or 0) for q in questions)
 
             # Check if graded (any answer has marks_awarded)
@@ -106,11 +95,7 @@ def view_student_grades(
                     "type": "Essay",
                     "score": total_marks,
                     "total": total_possible,
-                    "percentage": (
-                        (total_marks / total_possible * 100)
-                        if total_possible > 0
-                        else 0
-                    ),
+                    "percentage": ((total_marks / total_possible * 100) if total_possible > 0 else 0),
                     "submitted_at": attempt.submitted_at or attempt.started_at,
                     "is_published": is_graded,  # Essay is "published" when graded
                     "sort_key": f"{exam.title.lower()}_{attempt.submitted_at or attempt.started_at}",
@@ -118,9 +103,7 @@ def view_student_grades(
             )
 
         # Get MCQ results
-        mcq_results = session.exec(
-            select(MCQResult).where(MCQResult.student_id == student_id)
-        ).all()
+        mcq_results = session.exec(select(MCQResult).where(MCQResult.student_id == student_id)).all()
 
         for mcq_result in mcq_results:
             exam = session.get(Exam, mcq_result.exam_id)
@@ -134,9 +117,7 @@ def view_student_grades(
                     "score": mcq_result.score,
                     "total": mcq_result.total_questions,
                     "percentage": (
-                        (mcq_result.score / mcq_result.total_questions * 100)
-                        if mcq_result.total_questions > 0
-                        else 0
+                        (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
                     ),
                     "submitted_at": mcq_result.graded_at,
                     "is_published": True,  # MCQ results are always published (auto-graded)
@@ -151,19 +132,13 @@ def view_student_grades(
                 reverse=(direction == "desc"),
             )
         elif sort == "exam":
-            results.sort(
-                key=lambda x: x["exam"].title.lower(), reverse=(direction == "desc")
-            )
+            results.sort(key=lambda x: x["exam"].title.lower(), reverse=(direction == "desc"))
         elif sort == "score":
             results.sort(key=lambda x: x["percentage"], reverse=(direction == "desc"))
 
         # Pagination
         total_results = len(results)
-        total_pages = (
-            (total_results + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
-            if total_results > 0
-            else 1
-        )
+        total_pages = (total_results + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_results > 0 else 1
         page = min(page, total_pages) if total_pages > 0 else 1
 
         start_idx = (page - 1) * ITEMS_PER_PAGE
@@ -222,34 +197,24 @@ def view_grades(
         # Get student record
         student_id = getattr(current_user, "student_id", None)
         if student_id is None:
-            s = session.exec(
-                select(Student).where(Student.user_id == current_user.id)
-            ).first()
+            s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
             if s:
                 student_id = s.id
 
         if student_id is None:
-            raise HTTPException(
-                status_code=404, detail="No linked student record found"
-            )
+            raise HTTPException(status_code=404, detail="No linked student record found")
 
         results = []
 
         # Get published MCQ results (all MCQ results are published as they're auto-graded)
-        mcq_results = session.exec(
-            select(MCQResult).where(MCQResult.student_id == student_id)
-        ).all()
+        mcq_results = session.exec(select(MCQResult).where(MCQResult.student_id == student_id)).all()
 
         for mcq_result in mcq_results:
             exam = session.get(Exam, mcq_result.exam_id)
             if not exam:
                 continue
 
-            percentage = (
-                (mcq_result.score / mcq_result.total_questions * 100)
-                if mcq_result.total_questions > 0
-                else 0
-            )
+            percentage = (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
             grade = calculate_grade(percentage)
 
             results.append(
@@ -259,9 +224,7 @@ def view_grades(
                     "total_score": mcq_result.total_questions,
                     "grade": grade,
                     "published_date": (
-                        mcq_result.graded_at.strftime("%Y-%m-%d %H:%M")
-                        if mcq_result.graded_at
-                        else "-"
+                        mcq_result.graded_at.strftime("%Y-%m-%d %H:%M") if mcq_result.graded_at else "-"
                     ),
                 }
             )
@@ -269,8 +232,7 @@ def view_grades(
         # Get published essay results (only those that have been graded)
         essay_attempts = session.exec(
             select(ExamAttempt).where(
-                (ExamAttempt.student_id == student_id)
-                & (ExamAttempt.status.in_(["submitted", "timed_out"]))
+                (ExamAttempt.student_id == student_id) & (ExamAttempt.status.in_(["submitted", "timed_out"]))
             )
         ).all()
 
@@ -280,9 +242,7 @@ def view_grades(
                 continue
 
             # Get answers for this attempt
-            answers = session.exec(
-                select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)
-            ).all()
+            answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)).all()
 
             # Check if graded (any answer has marks_awarded set)
             is_graded = any(a.marks_awarded is not None for a in answers)
@@ -292,14 +252,10 @@ def view_grades(
             total_marks = sum((a.marks_awarded or 0) for a in answers)
 
             # Get total possible marks
-            questions = session.exec(
-                select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
-            ).all()
+            questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)).all()
             total_possible = sum((q.max_marks or 0) for q in questions)
 
-            percentage = (
-                (total_marks / total_possible * 100) if total_possible > 0 else 0
-            )
+            percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
             grade = calculate_grade(percentage)
 
             results.append(
@@ -309,9 +265,7 @@ def view_grades(
                     "total_score": total_possible,
                     "grade": grade,
                     "published_date": (
-                        attempt.submitted_at.strftime("%Y-%m-%d %H:%M")
-                        if attempt.submitted_at
-                        else "-"
+                        attempt.submitted_at.strftime("%Y-%m-%d %H:%M") if attempt.submitted_at else "-"
                     ),
                 }
             )
