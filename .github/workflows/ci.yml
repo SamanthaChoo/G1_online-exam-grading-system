@@ -7,9 +7,9 @@ name: CI
 # - Uses caching for pip to speed up repeated runs
 on:
   push:
-    branches: [ main, master, kxy-dev ]
+    branches: [ main, master, kxy-dev, kxy-sprint2 ]
   pull_request:
-    branches: [ main, master, kxy-dev ]
+    branches: [ main, master, kxy-dev, kxy-sprint2 ]
   schedule:
     # Nightly builds at 2 AM UTC (ensures bug-free system)
     - cron: '0 2 * * *'
