@@ -7,7 +7,7 @@ from app.database import engine
 from app.auth_utils import hash_password
 from app.models import Course, User, Student, Exam, MCQQuestion
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def create_sample_course_and_lecturer(session: Session = None):
     # helper to insert a course and lecturer; return (course_id, lecturer_credentials)
     with Session(engine) as s:
@@ -22,7 +22,7 @@ def create_sample_course_and_lecturer(session: Session = None):
         return course, lecturer
 
 # 1) Success case
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_success():
     client = TestClient(app)
     # create data
@@ -50,7 +50,7 @@ def test_create_mcq_success():
     assert resp.status_code == 303  # redirected to mcq list
 
 # 2) Missing/empty option -> server error
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_missing_option():
     client = TestClient(app)
     with Session(engine) as s:
@@ -72,7 +72,7 @@ def test_create_mcq_missing_option():
     assert "All options must be provided" in resp.text or "All options must be provided and non-empty" in resp.text
 
 # 3) Duplicate options -> server error
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_duplicate_options():
     client = TestClient(app)
     with Session(engine) as s:
@@ -94,7 +94,7 @@ def test_create_mcq_duplicate_options():
     assert "must all be different" in resp.text
 
 # 4) Too-short question -> server error
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_short_question():
     client = TestClient(app)
     with Session(engine) as s:
@@ -116,7 +116,7 @@ def test_create_mcq_short_question():
     assert "at least 5 characters" in resp.text
 
 # 5) Correct option mismatch -> server error
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_invalid_correct_option():
     client = TestClient(app)
     with Session(engine) as s:
@@ -139,7 +139,7 @@ def test_create_mcq_invalid_correct_option():
     assert "one of A, B, C or D" in resp.text
 
 # 6) HTML stripping (security)
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_strip_html_tags():
     client = TestClient(app)
     with Session(engine) as s:

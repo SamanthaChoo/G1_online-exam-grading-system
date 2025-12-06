@@ -53,7 +53,7 @@ def setup_course_and_lecturer():
         return course, lecturer, exam
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_success(client, setup_course_and_lecturer):
     """Test successful MCQ creation."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -84,7 +84,7 @@ def test_create_mcq_success(client, setup_course_and_lecturer):
     assert resp.status_code == 303
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_missing_option(client, setup_course_and_lecturer):
     """Test MCQ creation with missing option."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -115,7 +115,7 @@ def test_create_mcq_missing_option(client, setup_course_and_lecturer):
     assert "must be provided" in resp.text.lower() or "non-empty" in resp.text.lower()
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_duplicate_options(client, setup_course_and_lecturer):
     """Test MCQ creation with duplicate options."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -146,7 +146,7 @@ def test_create_mcq_duplicate_options(client, setup_course_and_lecturer):
     assert "must all be different" in resp.text.lower() or "unique" in resp.text.lower()
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_short_question(client, setup_course_and_lecturer):
     """Test MCQ creation with question text too short."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -177,7 +177,7 @@ def test_create_mcq_short_question(client, setup_course_and_lecturer):
     assert "at least 5 characters" in resp.text.lower() or "minimum length" in resp.text.lower()
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_invalid_correct_option(client, setup_course_and_lecturer):
     """Test MCQ creation with invalid correct_option."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -208,7 +208,7 @@ def test_create_mcq_invalid_correct_option(client, setup_course_and_lecturer):
     assert "one of a, b, c or d" in resp.text.lower() or "valid option" in resp.text.lower()
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_strip_html_tags(client, setup_course_and_lecturer):
     """Test MCQ creation with HTML tags (security test)."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -244,7 +244,7 @@ def test_create_mcq_strip_html_tags(client, setup_course_and_lecturer):
     assert "<i>" not in resp_list.text
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_all_options_empty(client, setup_course_and_lecturer):
     """Test MCQ creation with all options empty."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -274,7 +274,7 @@ def test_create_mcq_all_options_empty(client, setup_course_and_lecturer):
     assert resp.status_code == 400
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_whitespace_only_option(client, setup_course_and_lecturer):
     """Test MCQ creation with whitespace-only option."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -304,7 +304,7 @@ def test_create_mcq_whitespace_only_option(client, setup_course_and_lecturer):
     assert resp.status_code == 400
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_case_insensitive_correct_option(client, setup_course_and_lecturer):
     """Test MCQ creation with lowercase correct_option."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -335,7 +335,7 @@ def test_create_mcq_case_insensitive_correct_option(client, setup_course_and_lec
     assert resp.status_code in [303, 400]
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_very_long_question(client, setup_course_and_lecturer):
     """Test MCQ creation with very long question text."""
     course, lecturer, exam = setup_course_and_lecturer
@@ -367,7 +367,7 @@ def test_create_mcq_very_long_question(client, setup_course_and_lecturer):
     assert resp.status_code in [303, 400]
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 def test_create_mcq_special_characters(client, setup_course_and_lecturer):
     """Test MCQ creation with special characters."""
     course, lecturer, exam = setup_course_and_lecturer

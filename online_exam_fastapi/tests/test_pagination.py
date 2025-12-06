@@ -35,7 +35,7 @@ def _now_plus_minutes_iso(minutes: int) -> str:
     ).isoformat()
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 class TestCourseListPagination:
     """Acceptance tests for course list pagination."""
 
@@ -155,7 +155,7 @@ class TestCourseListPagination:
             assert resp.context["total_items"] == 5
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 class TestExamListPagination:
     """Acceptance tests for exam list pagination."""
 
@@ -229,7 +229,7 @@ class TestExamListPagination:
             assert resp2.context["current_page"] == 2
 
 
-@pytest.mark.usefixtures("cleanup_db")
+@pytest.mark.usefixtures("cleanup_db_between_tests")
 class TestStudentEnrollmentPagination:
     """Acceptance tests for student enrollment list pagination."""
 
