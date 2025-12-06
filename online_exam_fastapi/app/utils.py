@@ -24,9 +24,7 @@ def sanitize_question_text(text: str) -> str:
     ]
     allowed_attributes = {}
 
-    sanitized = bleach.clean(
-        text, tags=allowed_tags, attributes=allowed_attributes, strip=True
-    )
+    sanitized = bleach.clean(text, tags=allowed_tags, attributes=allowed_attributes, strip=True)
     return sanitized.strip()
 
 

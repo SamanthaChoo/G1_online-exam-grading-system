@@ -146,7 +146,7 @@
 
         const payload = { answers: collectAnswers() };
         try{
-          await fetch(`/essay/exam/${examId}/autosave?student_id=${{{ attempt.student_id }}}`, {
+          await fetch(`/essay/exam/${examId}/autosave?student_id=${attemptId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
