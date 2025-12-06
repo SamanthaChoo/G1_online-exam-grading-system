@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.database import get_session
-from app.deps import get_current_user, require_login
+from app.deps import require_login
 from app.models import (
     Exam,
     ExamAttempt,

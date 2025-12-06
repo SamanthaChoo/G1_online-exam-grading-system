@@ -2,7 +2,7 @@
 
 from typing import Optional
 from app.database import get_session
-from app.deps import require_role, get_current_user
+from app.deps import require_role
 from app.models import (
     User,
     Course,

@@ -15,6 +15,7 @@ from app.models import (
     MCQQuestion,
     MCQAnswer,
     CourseLecturer,
+    ExamActivityLog,
 )
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi import status as http_status

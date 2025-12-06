@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, Form, Request, Query, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
-from app.deps import require_login
+from app.deps import require_login, get_current_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

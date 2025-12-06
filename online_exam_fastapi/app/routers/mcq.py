@@ -14,7 +14,7 @@ from app.models import (
     Student,
     Enrollment,
 )
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi import status as http_status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
