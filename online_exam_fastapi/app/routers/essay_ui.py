@@ -19,9 +19,7 @@ from fastapi import APIRouter, Depends, Form, Request, Query, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
-from datetime import timezone, datetime
-from app.deps import get_current_user, require_login
-import json
+from app.deps import require_login
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

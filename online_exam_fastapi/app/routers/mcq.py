@@ -359,7 +359,7 @@ def delete_mcq(
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     """Delete an MCQ question."""
-    exam = _get_exam(exam_id, session)
+    _get_exam(exam_id, session)
     question = session.get(MCQQuestion, question_id)
     if not question or question.exam_id != exam_id:
         raise HTTPException(status_code=404, detail="MCQ question not found")
@@ -520,7 +520,7 @@ async def submit_mcq_attempt(
     if student_id is None:
         raise HTTPException(status_code=403, detail="No linked student record")
 
-    exam = _get_exam(exam_id, session)
+    _get_exam(exam_id, session)
 
     # Read form data
     form = await request.form()

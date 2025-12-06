@@ -55,44 +55,6 @@ def _has_mcq_result(session: Session, exam_id: int, student_id: int) -> bool:
     return existing is not None
 
 
-@router.get("/schedule/student/{student_id}")
-def student_exam_schedule(
-    student_id: int,
-    request: Request,
-    session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_current_user),
-):
-    """View exam schedule for a specific student."""
-    # Get all courses student is enrolled in
-    enrollments = session.exec(select(Enrollment).where(Enrollment.student_id == student_id)).all()
-    course_ids = [e.course_id for e in enrollments]
-    # Get all exams for these courses
-    now = datetime.now()
-    exams = session.exec(select(Exam).where(Exam.course_id.in_(course_ids))).all() if course_ids else []
-    # Compute exam status
-    exam_list = []
-    for exam in exams:
-        if not exam.start_time or not exam.end_time:
-            status = "unscheduled"
-        elif now < exam.start_time:
-            mins_to_start = (exam.start_time - now).total_seconds() / 60
-            if mins_to_start > 30:
-                status = "upcoming"
-            else:
-                status = "starting soon"
-        elif exam.start_time <= now <= exam.end_time:
-            status = "ongoing"
-        else:
-            status = "ended"
-        exam_list.append({"exam": exam, "status": status})
-    student = session.get(Student, student_id)
-    context = {
-        "request": request,
-        "exams": exam_list,
-        "student": student,
-        "current_user": current_user,
-    }
-    return templates.TemplateResponse("exams/schedule.html", context)
 
 
 @router.get("/results/student/{student_id}")
