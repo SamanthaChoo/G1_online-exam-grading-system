@@ -16,8 +16,8 @@ from app.models import Course, User, Exam
 
 @pytest.fixture
 def client():
-    """Create a test client that doesn't follow redirects."""
-    return TestClient(app, follow_redirects=False)
+    """Create a test client for the FastAPI application."""
+    return TestClient(app)
 
 
 @pytest.fixture
