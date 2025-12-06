@@ -78,6 +78,7 @@ def cleanup_db_between_tests():
         session.exec(text("DELETE FROM mcqquestion"))
         session.exec(text("DELETE FROM essayanswer"))
         session.exec(text("DELETE FROM examattempt"))
+        session.exec(text("DELETE FROM examactivitylog"))
         session.exec(text("DELETE FROM examquestion"))
         session.exec(text("DELETE FROM exam"))
         session.exec(text("DELETE FROM enrollment"))

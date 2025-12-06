@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text
 import uuid
 
 
@@ -12,13 +12,6 @@ def _ensure_app_on_path():
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     return repo_root
-
-
-def _fresh_db():
-    _ensure_app_on_path()
-    from app.database import create_db_and_tables
-
-    create_db_and_tables()
 
 
 def _unique_code(prefix: str = "COURSE") -> str:
@@ -41,15 +34,17 @@ class TestCourseListPagination:
 
     def test_course_list_pagination_with_many_courses(self):
         """Pass: course list paginates correctly when there are more than 10 courses."""
-        _fresh_db()
-        from app.database import engine
+        _ensure_app_on_path()
+        from conftest import test_engine
         from app.routers.courses import list_courses
         from app.models import Course
 
-        with Session(engine) as session:
-            # Count existing courses
-            existing_count = len(session.exec(select(Course)).all())
-            
+        # Clear all courses first
+        with Session(test_engine) as session:
+            session.exec(text("DELETE FROM course"))
+            session.commit()
+
+        with Session(test_engine) as session:
             # Create 15 courses
             created_codes = []
             for i in range(15):
@@ -84,8 +79,8 @@ class TestCourseListPagination:
             assert resp1.context["current_page"] == 1
             total_items = resp1.context["total_items"]
             total_pages = resp1.context["total_pages"]
-            assert total_items >= 15  # At least our 15 courses
-            assert total_pages >= 2  # At least 2 pages
+            assert total_items == 15  # Exactly our 15 courses
+            assert total_pages == 2  # Exactly 2 pages (10 per page, 15 total)
             assert resp1.context["items_per_page"] == 10
 
             # Test page 2
@@ -117,12 +112,17 @@ class TestCourseListPagination:
 
     def test_course_list_pagination_with_few_courses(self):
         """Pass: course list shows all courses when there are 10 or fewer."""
-        _fresh_db()
-        from app.database import engine
+        _ensure_app_on_path()
+        from conftest import test_engine
         from app.routers.courses import list_courses
         from app.models import Course
 
-        with Session(engine) as session:
+        # Clear all courses first
+        with Session(test_engine) as session:
+            session.exec(text("DELETE FROM course"))
+            session.commit()
+
+        with Session(test_engine) as session:
             # Create 5 courses
             for i in range(5):
                 course = Course(
@@ -161,12 +161,12 @@ class TestExamListPagination:
 
     def test_exam_list_pagination_with_many_exams(self):
         """Pass: exam list paginates correctly when there are more than 10 exams."""
-        _fresh_db()
-        from app.database import engine
+        _ensure_app_on_path()
+        from conftest import test_engine
         from app.routers.exams import exams_for_course
         from app.models import Course, Exam
 
-        with Session(engine) as session:
+        with Session(test_engine) as session:
             # Create a course
             course = Course(
                 code=_unique_code("EXAMPAG"),
@@ -235,12 +235,12 @@ class TestStudentEnrollmentPagination:
 
     def test_student_enrollment_pagination_with_many_students(self):
         """Pass: student enrollment list paginates available students correctly."""
-        _fresh_db()
-        from app.database import engine
+        _ensure_app_on_path()
+        from conftest import test_engine
         from app.routers.courses import enroll_form
         from app.models import Course, Student, Enrollment
 
-        with Session(engine) as session:
+        with Session(test_engine) as session:
             # Create a course
             course = Course(
                 code=_unique_code("ENRPAG"),

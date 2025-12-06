@@ -23,18 +23,21 @@ def client():
 @pytest.fixture
 def setup_course_and_lecturer():
     """Setup a course, lecturer, and exam for testing."""
+    import uuid
+    unique_suffix = uuid.uuid4().hex[:6].upper()
+    
     with Session(engine) as s:
-        course = Course(code="TST100", name="Test Course")
+        course = Course(code=f"TST100-{unique_suffix}", name="Test Course")
         s.add(course)
         s.commit()
         s.refresh(course)
         
         lecturer = User(
             name="Test Lecturer",
-            email="lecturer@test.com",
+            email=f"lecturer-{unique_suffix}@test.com",
             password_hash=hash_password("Lect1!"),
             role="lecturer",
-            staff_id="L100"
+            staff_id=f"L100-{unique_suffix}"
         )
         s.add(lecturer)
         s.commit()

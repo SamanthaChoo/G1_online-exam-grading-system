@@ -36,7 +36,7 @@ def test_create_mcq_success():
         s.add(exam); s.commit(); s.refresh(exam)
 
     # simulate login by posting to /auth/login (if sessions used), then create MCQ
-    resp_login = client.post("/auth/login", data={"login_type": "lecturer", "staff_id": "S1", "password": "Lect1!"}, allow_redirects=False)
+    resp_login = client.post("/auth/login", data={"login_type": "lecturer", "staff_id": "S1", "password": "Lect1!"}, follow_redirects=False)
     assert resp_login.status_code == 303
 
     resp = client.post(f"/exams/{exam.id}/mcq/new", data={
@@ -46,7 +46,7 @@ def test_create_mcq_success():
         "option_c": "3",
         "option_d": "4",
         "correct_option": "B"
-    }, allow_redirects=False)
+    }, follow_redirects=False)
     assert resp.status_code == 303  # redirected to mcq list
 
 # 2) Missing/empty option -> server error
@@ -59,7 +59,7 @@ def test_create_mcq_missing_option():
         s.add(lec); s.commit(); s.refresh(lec)
         exam = Exam(title="E", subject="S", duration_minutes=10, course_id=course.id)
         s.add(exam); s.commit(); s.refresh(exam)
-    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S2","password":"Lect1!"}, allow_redirects=False)
+    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S2","password":"Lect1!"}, follow_redirects=False)
     resp = client.post(f"/exams/{exam.id}/mcq/new", data={
         "question_text": "Valid question",
         "option_a": "A",
@@ -81,7 +81,7 @@ def test_create_mcq_duplicate_options():
         s.add(lec); s.commit(); s.refresh(lec)
         exam = Exam(title="E", subject="S", duration_minutes=10, course_id=course.id)
         s.add(exam); s.commit(); s.refresh(exam)
-    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S3","password":"Lect1!"}, allow_redirects=False)
+    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S3","password":"Lect1!"}, follow_redirects=False)
     resp = client.post(f"/exams/{exam.id}/mcq/new", data={
         "question_text": "Q",
         "option_a": "Same",
@@ -103,7 +103,7 @@ def test_create_mcq_short_question():
         s.add(lec); s.commit(); s.refresh(lec)
         exam = Exam(title="E", subject="S", duration_minutes=10, course_id=course.id)
         s.add(exam); s.commit(); s.refresh(exam)
-    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S4","password":"Lect1!"}, allow_redirects=False)
+    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S4","password":"Lect1!"}, follow_redirects=False)
     resp = client.post(f"/exams/{exam.id}/mcq/new", data={
         "question_text": "abc",  # too short
         "option_a": "A",
@@ -125,7 +125,7 @@ def test_create_mcq_invalid_correct_option():
         s.add(lec); s.commit(); s.refresh(lec)
         exam = Exam(title="E", subject="S", duration_minutes=10, course_id=course.id)
         s.add(exam); s.commit(); s.refresh(exam)
-    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S5","password":"Lect1!"}, allow_redirects=False)
+    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S5","password":"Lect1!"}, follow_redirects=False)
     # correct_option 'E' invalid
     resp = client.post(f"/exams/{exam.id}/mcq/new", data={
         "question_text": "Valid question",
@@ -148,7 +148,7 @@ def test_create_mcq_strip_html_tags():
         s.add(lec); s.commit(); s.refresh(lec)
         exam = Exam(title="E", subject="S", duration_minutes=10, course_id=course.id)
         s.add(exam); s.commit(); s.refresh(exam)
-    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S6","password":"Lect1!"}, allow_redirects=False)
+    client.post("/auth/login", data={"login_type":"lecturer","staff_id":"S6","password":"Lect1!"}, follow_redirects=False)
     resp = client.post(f"/exams/{exam.id}/mcq/new", data={
         "question_text": "<script>alert(1)</script>Q",
         "option_a": "<b>A</b>",
@@ -156,7 +156,7 @@ def test_create_mcq_strip_html_tags():
         "option_c": "C",
         "option_d": "D",
         "correct_option": "A"
-    }, allow_redirects=False)
+    }, follow_redirects=False)
     assert resp.status_code == 303
     # retrieve mcq list and ensure tags removed
     r2 = client.get(f"/exams/{exam.id}/mcq")
