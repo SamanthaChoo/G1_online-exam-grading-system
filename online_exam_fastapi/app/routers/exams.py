@@ -55,8 +55,6 @@ def _has_mcq_result(session: Session, exam_id: int, student_id: int) -> bool:
     return existing is not None
 
 
-
-
 @router.get("/results/student/{student_id}")
 def student_exam_results(
     student_id: int,
