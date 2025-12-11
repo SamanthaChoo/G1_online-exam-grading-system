@@ -407,26 +407,157 @@
     }
   }
 
+  let matricCheckTimeout = null;
+  let isCheckingMatric = false;
+  let lastCheckedValue = '';
+
   function validateMatric() {
     const value = matricInput.value.trim();
+    
+    // Clear any pending check
+    if (matricCheckTimeout) {
+      clearTimeout(matricCheckTimeout);
+      matricCheckTimeout = null;
+    }
+    
+    // Basic format validation
+    if (value.length === 0) {
+      matricInput.classList.remove('is-invalid', 'is-valid');
+      const icon = document.getElementById('matric-icon');
+      if (icon) icon.innerHTML = '';
+      const errorEl = document.getElementById('matric-error');
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.style.display = 'none';
+      }
+      lastCheckedValue = '';
+      return;
+    }
+    
     if (value.length < 3) {
       showValidation(matricInput, false, 'Student ID must be at least 3 characters long.', 'matric-icon', 'matric-error');
-    } else if (value.length > 50) {
-      showValidation(matricInput, false, 'Student ID must not exceed 50 characters.', 'matric-icon', 'matric-error');
-    } else {
-      showValidation(matricInput, true, '', 'matric-icon', 'matric-error');
+      return;
     }
+    
+    if (value.length > 50) {
+      showValidation(matricInput, false, 'Student ID must not exceed 50 characters.', 'matric-icon', 'matric-error');
+      return;
+    }
+    
+    // Check uniqueness via API (debounced) - only if value changed
+    if (value === lastCheckedValue) {
+      return; // Already checked this value
+    }
+    
+    matricCheckTimeout = setTimeout(async function() {
+      if (isCheckingMatric || value !== matricInput.value.trim()) return;
+      isCheckingMatric = true;
+      lastCheckedValue = value;
+      
+      // Show loading state
+      const icon = document.getElementById('matric-icon');
+      if (icon) {
+        icon.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        icon.style.display = 'block';
+      }
+      matricInput.classList.remove('is-invalid', 'is-valid');
+      
+      try {
+        const response = await fetch(`/auth/check-student-id?matric_no=${encodeURIComponent(value)}`);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        
+        // Double-check the value hasn't changed while we were checking
+        if (matricInput.value.trim() !== value) {
+          isCheckingMatric = false;
+          return;
+        }
+        
+        if (data.available) {
+          // Student ID is available
+          showValidation(matricInput, true, '', 'matric-icon', 'matric-error');
+        } else {
+          // Student ID already exists
+          showValidation(matricInput, false, data.message || 'This Student ID is already registered.', 'matric-icon', 'matric-error');
+        }
+      } catch (error) {
+        console.error('Error checking student ID:', error);
+        // On error, just show format validation (don't block if API fails)
+        // Only show valid if format is correct
+        if (value.length >= 3 && value.length <= 50) {
+          showValidation(matricInput, true, '', 'matric-icon', 'matric-error');
+        }
+      } finally {
+        isCheckingMatric = false;
+      }
+    }, 500); // Wait 500ms after user stops typing
   }
 
   function validateEmail() {
     const value = emailInput.value.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) {
-      showValidation(emailInput, false, 'Please enter a valid email address.', 'email-icon', 'email-error');
+    
+    // Valid TLDs list (matching backend validation)
+    const validTLDs = new Set([
+      // Generic TLDs
+      'com', 'org', 'net', 'edu', 'gov', 'mil', 'int',
+      // Country code TLDs
+      'uk', 'us', 'ca', 'au', 'de', 'fr', 'it', 'es', 'nl', 'be', 'ch', 'at', 'se', 'no', 'dk', 'fi',
+      'pl', 'cz', 'ie', 'pt', 'gr', 'ro', 'hu', 'bg', 'hr', 'sk', 'si', 'lt', 'lv', 'ee',
+      'jp', 'cn', 'kr', 'in', 'sg', 'my', 'th', 'ph', 'id', 'vn', 'tw', 'hk', 'mo',
+      'nz', 'za', 'br', 'mx', 'ar', 'cl', 'co', 'pe', 've', 'ec', 'uy', 'py', 'bo',
+      'ae', 'sa', 'il', 'tr', 'eg', 'ma', 'dz', 'tn', 'jo', 'lb', 'kw', 'qa', 'bh', 'om',
+      'ru', 'ua', 'kz', 'by', 'ge', 'am', 'az',
+      // New gTLDs
+      'io', 'ai', 'app', 'dev', 'tech', 'online', 'site', 'website', 'store', 'shop',
+      'blog', 'info', 'biz', 'name', 'pro', 'xyz', 'me', 'tv', 'cc', 'ws', 'mobi',
+      // Academic/Educational
+      'ac', 'sch',
+      // Other common ones
+      'asia', 'tel', 'jobs', 'travel', 'museum', 'aero', 'coop'
+    ]);
+    
+    // Basic email format regex
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    if (!value) {
+      showValidation(emailInput, false, 'Email address is required.', 'email-icon', 'email-error');
     } else if (value.length > 255) {
       showValidation(emailInput, false, 'Email address is too long.', 'email-icon', 'email-error');
+    } else if (!emailRegex.test(value)) {
+      showValidation(emailInput, false, 'Please enter a valid email address format.', 'email-icon', 'email-error');
     } else {
-      showValidation(emailInput, true, '', 'email-icon', 'email-error');
+      // Extract TLD
+      try {
+        const parts = value.split('@');
+        if (parts.length !== 2) {
+          showValidation(emailInput, false, 'Invalid email address format.', 'email-icon', 'email-error');
+          return;
+        }
+        
+        const domain = parts[1];
+        if (!domain || !domain.includes('.')) {
+          showValidation(emailInput, false, 'Email address must have a valid domain.', 'email-icon', 'email-error');
+          return;
+        }
+        
+        const domainParts = domain.split('.');
+        const tld = domainParts[domainParts.length - 1].toLowerCase();
+        
+        // Validate TLD
+        if (!tld || tld.length < 2) {
+          showValidation(emailInput, false, 'Email address must have a valid top-level domain (e.g., .com, .edu).', 'email-icon', 'email-error');
+        } else if (!tld.match(/^[a-zA-Z]+$/)) {
+          showValidation(emailInput, false, 'Email address must have a valid top-level domain (e.g., .com, .edu).', 'email-icon', 'email-error');
+        } else if (!validTLDs.has(tld)) {
+          showValidation(emailInput, false, `Email address must use a valid top-level domain (e.g., .com, .edu, .org). '.${tld}' is not recognized as a valid domain.`, 'email-icon', 'email-error');
+        } else {
+          showValidation(emailInput, true, '', 'email-icon', 'email-error');
+        }
+      } catch (e) {
+        showValidation(emailInput, false, 'Please enter a valid email address.', 'email-icon', 'email-error');
+      }
     }
   }
 
@@ -552,9 +683,7 @@
 
   matricInput.addEventListener('blur', validateMatric);
   matricInput.addEventListener('input', function() {
-    if (matricInput.classList.contains('is-invalid') || matricInput.classList.contains('is-valid')) {
-      validateMatric();
-    }
+    validateMatric(); // Always validate on input for live checking
   });
 
   emailInput.addEventListener('blur', validateEmail);

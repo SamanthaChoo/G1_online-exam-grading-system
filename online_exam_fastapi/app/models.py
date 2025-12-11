@@ -156,6 +156,17 @@ class PasswordResetToken(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class PasswordResetOTP(SQLModel, table=True):
+    """Password reset OTP codes (6-digit) for email-based reset flow."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    otp_code: str  # 6-digit code
+    expires_at: datetime
+    used: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # ===================== SPRINT 1 MCQ MODELS =====================
 
 

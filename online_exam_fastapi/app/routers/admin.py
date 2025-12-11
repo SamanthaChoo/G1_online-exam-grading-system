@@ -5,6 +5,7 @@ from typing import Optional
 from app.auth_utils import hash_password
 from app.database import get_session
 from app.deps import require_role
+from app.email_validator import validate_email_format
 from app.models import User
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
@@ -110,8 +111,15 @@ def edit_user(
 
     if not name_clean:
         errors["name"] = "Name is required."
+    
+    # Email validation with TLD checking
     if not email_clean:
         errors["email"] = "Email is required."
+    else:
+        email_error = validate_email_format(email_clean)
+        if email_error:
+            errors["email"] = email_error
+    
     if role_clean not in ("admin", "lecturer", "student"):
         errors["role"] = "Role must be admin, lecturer, or student."
 
@@ -245,10 +253,13 @@ def create_lecturer(
     elif len(staff_id_clean) < 3:
         errors["staff_id"] = "Staff ID must be at least 3 characters long."
 
+    # Email validation with TLD checking
     if not email_clean:
         errors["email"] = "Email is required."
-    elif "@" not in email_clean or "." not in email_clean.split("@")[-1]:
-        errors["email"] = "Please enter a valid email address."
+    else:
+        email_error = validate_email_format(email_clean)
+        if email_error:
+            errors["email"] = email_error
 
     if phone_clean:
         phone_digits = "".join(filter(str.isdigit, phone_clean))

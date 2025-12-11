@@ -8,13 +8,12 @@
         <div class="card-body p-4">
           <h1 class="h5 mb-3 text-center">Reset Password</h1>
           <p class="text-muted small text-center mb-4">
-            Enter your email address and we will send you a link to reset your password.
+            Enter your email address and we will send you a 6-digit OTP code to reset your password.
           </p>
 
-          {% if submitted %}
-          <div class="alert alert-success" role="alert">
-            If the email you entered exists in our system, a reset link has been generated.
-            For this demo, the link is shown below instead of being emailed.
+          {% if error %}
+          <div class="alert alert-danger" role="alert">
+            {{ error }}
           </div>
           {% endif %}
 
@@ -23,31 +22,137 @@
               <label for="email" class="form-label">Email</label>
               <input
                 type="email"
-                class="form-control"
+                class="form-control {% if error %}is-invalid{% endif %}"
                 id="email"
                 name="email"
+                value="{{ email or '' }}"
                 required
+                autocomplete="email"
               >
             </div>
 
             <div class="d-grid">
               <button type="submit" class="btn btn-primary">
-                Request reset link
+                Send OTP Code
               </button>
             </div>
           </form>
 
-          {% if reset_link %}
-          <div class="alert alert-info small" role="alert">
-            <strong>Development only:</strong> click this link to reset your password:<br>
-            <a href="{{ reset_link }}">{{ reset_link }}</a>
+          <div class="text-center mt-3">
+            <a href="/auth/login" class="text-decoration-none">Back to Login</a>
           </div>
-          {% endif %}
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('email');
+    const form = document.querySelector('form');
+    
+    // Valid TLDs list (matching backend validation)
+    const validTLDs = new Set([
+      // Generic TLDs
+      'com', 'org', 'net', 'edu', 'gov', 'mil', 'int',
+      // Country code TLDs
+      'uk', 'us', 'ca', 'au', 'de', 'fr', 'it', 'es', 'nl', 'be', 'ch', 'at', 'se', 'no', 'dk', 'fi',
+      'pl', 'cz', 'ie', 'pt', 'gr', 'ro', 'hu', 'bg', 'hr', 'sk', 'si', 'lt', 'lv', 'ee',
+      'jp', 'cn', 'kr', 'in', 'sg', 'my', 'th', 'ph', 'id', 'vn', 'tw', 'hk', 'mo',
+      'nz', 'za', 'br', 'mx', 'ar', 'cl', 'co', 'pe', 've', 'ec', 'uy', 'py', 'bo',
+      'ae', 'sa', 'il', 'tr', 'eg', 'ma', 'dz', 'tn', 'jo', 'lb', 'kw', 'qa', 'bh', 'om',
+      'ru', 'ua', 'kz', 'by', 'ge', 'am', 'az',
+      // New gTLDs
+      'io', 'ai', 'app', 'dev', 'tech', 'online', 'site', 'website', 'store', 'shop',
+      'blog', 'info', 'biz', 'name', 'pro', 'xyz', 'me', 'tv', 'cc', 'ws', 'mobi',
+      // Academic/Educational
+      'ac', 'sch',
+      // Other common ones
+      'asia', 'tel', 'jobs', 'travel', 'museum', 'aero', 'coop'
+    ]);
+    
+    function validateEmail() {
+      const value = emailInput.value.trim().toLowerCase();
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      
+      emailInput.classList.remove('is-invalid', 'is-valid');
+      
+      if (!value) {
+        emailInput.classList.add('is-invalid');
+        emailInput.setCustomValidity('Email address is required.');
+        return false;
+      } else if (value.length > 255) {
+        emailInput.classList.add('is-invalid');
+        emailInput.setCustomValidity('Email address is too long.');
+        return false;
+      } else if (!emailRegex.test(value)) {
+        emailInput.classList.add('is-invalid');
+        emailInput.setCustomValidity('Please enter a valid email address format.');
+        return false;
+      } else {
+        // Extract TLD
+        try {
+          const parts = value.split('@');
+          if (parts.length !== 2) {
+            emailInput.classList.add('is-invalid');
+            emailInput.setCustomValidity('Invalid email address format.');
+            return false;
+          }
+          
+          const domain = parts[1];
+          if (!domain || !domain.includes('.')) {
+            emailInput.classList.add('is-invalid');
+            emailInput.setCustomValidity('Email address must have a valid domain.');
+            return false;
+          }
+          
+          const domainParts = domain.split('.');
+          const tld = domainParts[domainParts.length - 1].toLowerCase();
+          
+          // Validate TLD
+          if (!tld || tld.length < 2) {
+            emailInput.classList.add('is-invalid');
+            emailInput.setCustomValidity('Email address must have a valid top-level domain (e.g., .com, .edu).');
+            return false;
+          } else if (!tld.match(/^[a-zA-Z]+$/)) {
+            emailInput.classList.add('is-invalid');
+            emailInput.setCustomValidity('Email address must have a valid top-level domain (e.g., .com, .edu).');
+            return false;
+          } else if (!validTLDs.has(tld)) {
+            emailInput.classList.add('is-invalid');
+            emailInput.setCustomValidity(`Email address must use a valid top-level domain (e.g., .com, .edu, .org). '.${tld}' is not recognized as a valid domain.`);
+            return false;
+          } else {
+            emailInput.classList.add('is-valid');
+            emailInput.setCustomValidity('');
+            return true;
+          }
+        } catch (e) {
+          emailInput.classList.add('is-invalid');
+          emailInput.setCustomValidity('Please enter a valid email address.');
+          return false;
+        }
+      }
+    }
+    
+    // Validate on blur and input
+    emailInput.addEventListener('blur', validateEmail);
+    emailInput.addEventListener('input', function() {
+      if (emailInput.classList.contains('is-invalid') || emailInput.classList.contains('is-valid')) {
+        validateEmail();
+      }
+    });
+    
+    // Validate on form submit
+    form.addEventListener('submit', function(e) {
+      if (!validateEmail()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+  });
+</script>
 {% endblock %}
 
 

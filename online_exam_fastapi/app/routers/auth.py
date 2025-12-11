@@ -3,13 +3,16 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from app.auth_utils import create_reset_token, hash_password, verify_password
+from app.auth_utils import create_reset_token, generate_otp, hash_password, verify_password
 from app.database import get_session
 from app.deps import get_current_user
-from app.models import PasswordResetToken, Student, User
+from app.email_utils import send_otp_email
+from app.email_validator import validate_email_format
+from app.models import PasswordResetOTP, PasswordResetToken, Student, User
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 router = APIRouter()
@@ -147,6 +150,46 @@ def logout(request: Request):
     return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@router.get("/check-student-id")
+def check_student_id(
+    matric_no: str,
+    session: Session = Depends(get_session),
+):
+    """API endpoint to check if a student ID already exists (for live validation)."""
+    matric_clean = matric_no.strip()
+    
+    if not matric_clean or len(matric_clean) < 3:
+        return {"available": True, "message": ""}
+    
+    # Check for exact match
+    existing_student = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
+    
+    if existing_student:
+        if existing_student.user_id:
+            return {
+                "available": False,
+                "message": "This Student ID is already registered with an account. Please use a different ID or try logging in.",
+            }
+        else:
+            return {
+                "available": False,
+                "message": "This Student ID is already registered. Please use a different ID or contact support.",
+            }
+    
+    # Also check case-insensitively
+    existing_case = session.exec(
+        select(Student).where(func.lower(Student.matric_no) == matric_clean.lower())
+    ).first()
+    
+    if existing_case and existing_case.matric_no != matric_clean:
+        return {
+            "available": False,
+            "message": "A similar Student ID already exists. Please check your Student ID and try again.",
+        }
+    
+    return {"available": True, "message": ""}
+
+
 @router.get("/register-student")
 def register_student_form(request: Request):
     context = {"request": request, "form": None, "errors": {}}
@@ -191,19 +234,29 @@ def register_student(
     elif len(matric_clean) > 50:
         errors["matric_no"] = "Student ID must not exceed 50 characters."
 
-    # Check for duplicate matric_no
+    # Check for duplicate matric_no (case-insensitive and check if already has a user account)
     if "matric_no" not in errors:
-        existing_student_matric = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
-        if existing_student_matric:
-            errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+        # Check for exact match (case-sensitive first, as matric numbers are usually case-sensitive)
+        existing_student_exact = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
+        if existing_student_exact:
+            # Check if this student already has a user account
+            if existing_student_exact.user_id:
+                errors["matric_no"] = "This Student ID is already registered with an account. Please use a different ID or try logging in."
+            else:
+                errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+        
+        # Also check case-insensitively to catch variations (only if exact match didn't find anything)
+        if "matric_no" not in errors:
+            existing_student_case = session.exec(
+                select(Student).where(func.lower(Student.matric_no) == matric_clean.lower())
+            ).first()
+            if existing_student_case and existing_student_case.matric_no != matric_clean:
+                errors["matric_no"] = "A similar Student ID already exists. Please check your Student ID and try again."
 
-    # Email validation
-    if not email_clean:
-        errors["email"] = "Email address is required."
-    elif "@" not in email_clean or "." not in email_clean.split("@")[-1]:
-        errors["email"] = "Please enter a valid email address."
-    elif len(email_clean) > 255:
-        errors["email"] = "Email address is too long."
+    # Email validation with TLD checking
+    email_error = validate_email_format(email_clean)
+    if email_error:
+        errors["email"] = email_error
 
     # Check for existing email in both User and Student tables (only if email format is valid)
     if "email" not in errors:
@@ -280,6 +333,28 @@ def register_student(
         )
 
     # Create Student record
+    # Double-check uniqueness before creating (in case of race condition)
+    final_check = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
+    if final_check:
+        errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+        context = {
+            "request": request,
+            "form": {
+                "name": name,
+                "matric_no": matric_no,
+                "email": email,
+                "program": program,
+                "year_of_study": year_of_study,
+                "phone_number": phone_number,
+            },
+            "errors": errors,
+        }
+        return templates.TemplateResponse(
+            "auth/register_student.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    
     student = Student(
         name=name_clean,
         email=email_clean,
@@ -289,7 +364,31 @@ def register_student(
         phone_number=phone_clean,
     )
     session.add(student)
-    session.commit()
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        # Check if it's a unique constraint violation
+        if "uq_student_matric_no" in str(e) or "UNIQUE constraint" in str(e) or "unique" in str(e).lower():
+            errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+            context = {
+                "request": request,
+                "form": {
+                    "name": name,
+                    "matric_no": matric_no,
+                    "email": email,
+                    "program": program,
+                    "year_of_study": year_of_study,
+                    "phone_number": phone_number,
+                },
+                "errors": errors,
+            }
+            return templates.TemplateResponse(
+                "auth/register_student.html",
+                context,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        raise  # Re-raise if it's a different error
     session.refresh(student)
 
     # Create User linked to Student
@@ -327,27 +426,88 @@ def request_reset(
     session: Session = Depends(get_session),
 ):
     email_clean = email.strip().lower()
+    
+    # Validate email format first (including TLD check)
+    email_error = validate_email_format(email_clean)
+    if email_error:
+        context = {
+            "request": request,
+            "submitted": False,
+            "error": email_error,
+            "email": email,
+        }
+        return templates.TemplateResponse(
+            "auth/request_reset.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    
     user = session.exec(select(User).where(User.email == email_clean)).first()
 
-    reset_link: Optional[str] = None
+    # Check if email exists
+    if not user:
+        context = {
+            "request": request,
+            "submitted": False,
+            "error": "Account not found. Please check your email address and try again.",
+            "email": email,
+        }
+        return templates.TemplateResponse(
+            "auth/request_reset.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
 
-    if user:
-        token = create_reset_token()
-        expires_at = datetime.utcnow() + timedelta(minutes=30)
-        reset_token = PasswordResetToken(user_id=user.id, token=token, expires_at=expires_at)
-        session.add(reset_token)
-        session.commit()
+    # Generate 6-digit OTP
+    otp_code = generate_otp()
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
 
-        reset_link = f"http://127.0.0.1:8000/auth/reset-password?token={token}"
-        # For this assignment we "simulate" email by printing to console
-        print(f"[Password reset] Send this link to the user: {reset_link}")
+    # Invalidate any existing unused OTPs for this user
+    existing_otps = session.exec(
+        select(PasswordResetOTP).where(
+            PasswordResetOTP.user_id == user.id,
+            PasswordResetOTP.used == False,
+            PasswordResetOTP.expires_at > datetime.utcnow(),
+        )
+    ).all()
+    for otp in existing_otps:
+        otp.used = True
+        session.add(otp)
+
+    # Create new OTP
+    reset_otp = PasswordResetOTP(
+        user_id=user.id,
+        otp_code=otp_code,
+        expires_at=expires_at,
+    )
+    session.add(reset_otp)
+    session.commit()
+
+    # Send OTP via email
+    email_sent = send_otp_email(user.email, otp_code, user.name)
+    if not email_sent:
+        context = {
+            "request": request,
+            "submitted": False,
+            "error": "Failed to send email. Please try again later.",
+            "email": email,
+        }
+        return templates.TemplateResponse(
+            "auth/request_reset.html",
+            context,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    # Store user_id in session for OTP verification
+    request.session["reset_user_id"] = user.id
+    request.session["reset_email"] = user.email
 
     context = {
         "request": request,
         "submitted": True,
-        "reset_link": reset_link,  # visible only in dev template
+        "email": user.email,
     }
-    return templates.TemplateResponse("auth/request_reset.html", context)
+    return templates.TemplateResponse("auth/verify_otp.html", context)
 
 
 def _load_valid_token(token: str, session: Session) -> PasswordResetToken:
@@ -357,71 +517,223 @@ def _load_valid_token(token: str, session: Session) -> PasswordResetToken:
     return reset_token
 
 
+def _load_valid_otp(otp_code: str, user_id: int, session: Session) -> PasswordResetOTP:
+    """Load and validate OTP code."""
+    reset_otp = session.exec(
+        select(PasswordResetOTP).where(
+            PasswordResetOTP.otp_code == otp_code,
+            PasswordResetOTP.user_id == user_id,
+            PasswordResetOTP.used == False,
+        )
+    ).first()
+    if not reset_otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP code.")
+    if reset_otp.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="OTP code has expired. Please request a new one.")
+    return reset_otp
+
+
+@router.get("/verify-otp")
+def verify_otp_form(request: Request):
+    """Show OTP verification form."""
+    user_id = request.session.get("reset_user_id")
+    if not user_id:
+        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+
+    context = {
+        "request": request,
+        "email": request.session.get("reset_email", ""),
+        "error": None,
+    }
+    return templates.TemplateResponse("auth/verify_otp.html", context)
+
+
+@router.post("/verify-otp")
+def verify_otp(
+    request: Request,
+    otp_code: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    """Verify OTP code and redirect to password reset form."""
+    user_id = request.session.get("reset_user_id")
+    if not user_id:
+        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+
+    otp_clean = otp_code.strip()
+
+    # Validate OTP format (6 digits)
+    if not otp_clean.isdigit() or len(otp_clean) != 6:
+        context = {
+            "request": request,
+            "email": request.session.get("reset_email", ""),
+            "error": "Invalid OTP format. Please enter a 6-digit code.",
+        }
+        return templates.TemplateResponse(
+            "auth/verify_otp.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        reset_otp = _load_valid_otp(otp_clean, user_id, session)
+        # Mark OTP as used
+        reset_otp.used = True
+        session.add(reset_otp)
+        session.commit()
+
+        # Store verification in session
+        request.session["otp_verified"] = True
+        request.session["reset_user_id"] = user_id
+
+        return RedirectResponse(url="/auth/reset-password", status_code=status.HTTP_303_SEE_OTHER)
+    except HTTPException as exc:
+        context = {
+            "request": request,
+            "email": request.session.get("reset_email", ""),
+            "error": exc.detail,
+        }
+        return templates.TemplateResponse(
+            "auth/verify_otp.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@router.post("/resend-otp")
+def resend_otp(
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Resend OTP code."""
+    user_id = request.session.get("reset_user_id")
+    if not user_id:
+        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+
+    user = session.get(User, user_id)
+    if not user:
+        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Generate new OTP
+    otp_code = generate_otp()
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    # Invalidate any existing unused OTPs for this user
+    existing_otps = session.exec(
+        select(PasswordResetOTP).where(
+            PasswordResetOTP.user_id == user.id,
+            PasswordResetOTP.used == False,
+            PasswordResetOTP.expires_at > datetime.utcnow(),
+        )
+    ).all()
+    for otp in existing_otps:
+        otp.used = True
+        session.add(otp)
+
+    # Create new OTP
+    reset_otp = PasswordResetOTP(
+        user_id=user.id,
+        otp_code=otp_code,
+        expires_at=expires_at,
+    )
+    session.add(reset_otp)
+    session.commit()
+
+    # Send OTP via email
+    email_sent = send_otp_email(user.email, otp_code, user.name)
+    if not email_sent:
+        context = {
+            "request": request,
+            "email": user.email,
+            "error": "Failed to send email. Please try again later.",
+        }
+        return templates.TemplateResponse(
+            "auth/verify_otp.html",
+            context,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    context = {
+        "request": request,
+        "email": user.email,
+        "success": "A new OTP code has been sent to your email.",
+    }
+    return templates.TemplateResponse("auth/verify_otp.html", context)
+
+
 @router.get("/reset-password")
 def reset_password_form(
     request: Request,
-    token: str,
     session: Session = Depends(get_session),
 ):
-    # Validate token before showing the form
-    try:
-        _load_valid_token(token, session)
-    except HTTPException as exc:
-        if exc.status_code == 400:
-            context = {"request": request, "error": exc.detail}
-            return templates.TemplateResponse(
-                "auth/reset_password_invalid.html",
-                context,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-        raise
+    """Show password reset form after OTP verification."""
+    user_id = request.session.get("reset_user_id")
+    otp_verified = request.session.get("otp_verified")
 
-    context = {"request": request, "token": token, "errors": {}}
+    if not user_id or not otp_verified:
+        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+
+    context = {"request": request, "errors": {}}
     return templates.TemplateResponse("auth/reset_password.html", context)
 
 
 @router.post("/reset-password")
 def reset_password(
     request: Request,
-    token: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
     session: Session = Depends(get_session),
 ):
+    """Reset password after OTP verification."""
+    user_id = request.session.get("reset_user_id")
+    otp_verified = request.session.get("otp_verified")
+
+    if not user_id or not otp_verified:
+        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+
     errors: dict[str, str] = {}
+
+    # Password validation
     if not password:
         errors["password"] = "Password is required."
-    if password != confirm_password:
+    elif len(password) < 8:
+        errors["password"] = "Password must be at least 8 characters long."
+    elif len(password) > 128:
+        errors["password"] = "Password must not exceed 128 characters."
+    elif not any(c.isupper() for c in password):
+        errors["password"] = "Password must contain at least one uppercase letter."
+    elif not any(c.islower() for c in password):
+        errors["password"] = "Password must contain at least one lowercase letter."
+    elif not any(c.isdigit() for c in password):
+        errors["password"] = "Password must contain at least one number."
+    elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
+        errors["password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+
+    # Confirm password validation
+    if not confirm_password:
+        errors["confirm_password"] = "Please confirm your password."
+    elif password != confirm_password:
         errors["confirm_password"] = "Passwords do not match."
 
     if errors:
-        context = {"request": request, "token": token, "errors": errors}
+        context = {"request": request, "errors": errors}
         return templates.TemplateResponse(
             "auth/reset_password.html",
             context,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    try:
-        reset_token = _load_valid_token(token, session)
-    except HTTPException as exc:
-        if exc.status_code == 400:
-            context = {"request": request, "error": exc.detail}
-            return templates.TemplateResponse(
-                "auth/reset_password_invalid.html",
-                context,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-        raise
-
-    user = session.get(User, reset_token.user_id)
+    user = session.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=400, detail="User not found for token.")
+        raise HTTPException(status_code=400, detail="User not found.")
 
+    # Update password
     user.password_hash = hash_password(password)
-    reset_token.used = True
     session.add(user)
-    session.add(reset_token)
     session.commit()
+
+    # Clear reset session
+    request.session.pop("reset_user_id", None)
+    request.session.pop("otp_verified", None)
+    request.session.pop("reset_email", None)
 
     return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)

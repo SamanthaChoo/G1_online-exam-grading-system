@@ -11,6 +11,7 @@
         <p class="lead text-muted mb-4">
           Simple, secure digital exams for universities and academic institutions.
         </p>
+        {% if not current_user %}
         <div class="d-flex flex-column flex-sm-row gap-3 mb-3">
           <a href="/auth/login" class="btn btn-primary btn-lg hero-cta-btn">
             I'm a Lecturer – Login
@@ -22,6 +23,23 @@
         <p class="small text-muted">
           New here? <a href="/auth/register-student">Register as student</a>
         </p>
+        {% else %}
+        <div class="d-flex flex-column flex-sm-row gap-3 mb-3">
+          {% if current_user.role == "admin" %}
+          <a href="/admin/users" class="btn btn-primary btn-lg hero-cta-btn">
+            Go to Admin Dashboard
+          </a>
+          {% elif current_user.role == "lecturer" %}
+          <a href="/courses/" class="btn btn-primary btn-lg hero-cta-btn">
+            Go to My Courses
+          </a>
+          {% else %}
+          <a href="/courses/student" class="btn btn-primary btn-lg hero-cta-btn">
+            Go to My Courses
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
       <div class="col-lg-6 text-center">
         <div class="hero-illustration-placeholder">
@@ -174,10 +192,23 @@
         <div class="text-center py-5 px-4" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-radius: 1rem; color: white;">
           <h2 class="h3 mb-3 text-white">🚀 Start now — secure assessments for everyone</h2>
           <p class="mb-4 text-white-50">Join lecturers and students already using our platform</p>
+          {% if not current_user %}
           <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
             <a href="/auth/login" class="btn btn-light btn-lg">Login</a>
             <a href="/auth/register-student" class="btn btn-outline-light btn-lg">Register</a>
           </div>
+          {% else %}
+          <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+            {% if current_user.role == "admin" %}
+            <a href="/admin/users" class="btn btn-light btn-lg">Admin Dashboard</a>
+            {% elif current_user.role == "lecturer" %}
+            <a href="/courses/" class="btn btn-light btn-lg">My Courses</a>
+            {% else %}
+            <a href="/courses/student" class="btn btn-light btn-lg">My Courses</a>
+            {% endif %}
+            <a href="/auth/logout" class="btn btn-outline-light btn-lg">Logout</a>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
