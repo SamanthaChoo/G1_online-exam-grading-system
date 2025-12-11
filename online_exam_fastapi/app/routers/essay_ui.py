@@ -10,6 +10,8 @@ from app.models import (
 )
 from app.services.essay_service import (
     add_question,
+    edit_question,
+    get_question,
     grade_attempt,
     start_attempt,
     submit_answers,
@@ -122,6 +124,53 @@ def create_question(
 ):
     try:
         add_question(session, exam_id, question_text, max_marks)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
+
+
+@router.get("/essay/{exam_id}/questions/{question_id}/edit")
+def edit_question_form(
+    exam_id: int,
+    question_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_current_user),
+):
+    exam = session.get(Exam, exam_id)
+    question = get_question(session, question_id)
+    
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+    
+    # Students should not be able to edit questions
+    if current_user and current_user.role == "student":
+        return templates.TemplateResponse(
+            "essay/edit_question.html",
+            {
+                "request": request,
+                "exam": exam,
+                "question": question,
+                "error": "Students are not allowed to edit questions.",
+            },
+        )
+    
+    return templates.TemplateResponse(
+        "essay/edit_question.html",
+        {"request": request, "exam": exam, "question": question},
+    )
+
+
+@router.post("/essay/{exam_id}/questions/{question_id}/edit")
+def update_question(
+    exam_id: int,
+    question_id: int,
+    question_text: str = Form(None),
+    max_marks: int = Form(None),
+    session: Session = Depends(get_session),
+):
+    try:
+        edit_question(session, question_id, question_text, max_marks)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
