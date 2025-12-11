@@ -27,3 +27,8 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 def create_reset_token() -> str:
     """Generate a random URL-safe token for password reset."""
     return secrets.token_urlsafe(32)
+
+
+def generate_otp() -> str:
+    """Generate a 6-digit OTP code."""
+    return f"{secrets.randbelow(900000) + 100000:06d}"

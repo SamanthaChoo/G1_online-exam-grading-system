@@ -23,6 +23,109 @@ from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(title="Online Examination & Grading System")
 
+# Templates must be defined before exception handlers that use them
+from fastapi.templating import Jinja2Templates
+templates = Jinja2Templates(directory="app/templates")
+
+from fastapi.exceptions import RequestValidationError
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle form validation errors and return HTML responses for HTML requests."""
+    accept_header = request.headers.get("accept", "")
+    
+    # If it's an HTML request, return the appropriate form with errors
+    if "text/html" in accept_header or request.method == "POST":
+        # Extract field names from validation errors and convert to user-friendly messages
+        errors_dict = {}
+        field_name_mapping = {
+            "name": "Full name",
+            "matric_no": "Matric / Student ID",
+            "email": "Email address",
+            "password": "Password",
+            "confirm_password": "Confirm password",
+        }
+        
+        for error in exc.errors():
+            field_path = error.get("loc", [])
+            if field_path:
+                # Get the last element (field name) from the path
+                field_name = field_path[-1] if isinstance(field_path[-1], str) else str(field_path[-1])
+                error_type = error.get("type", "")
+                error_msg = error.get("msg", "Invalid input")
+                
+                # Convert technical error messages to user-friendly ones
+                if error_type == "missing":
+                    display_name = field_name_mapping.get(field_name, field_name.replace("_", " ").title())
+                    errors_dict[field_name] = f"{display_name} is required."
+                else:
+                    # Use the field name mapping for better display
+                    display_name = field_name_mapping.get(field_name, field_name.replace("_", " ").title())
+                    errors_dict[field_name] = f"{display_name}: {error_msg}"
+        
+        # Determine which form to show based on the URL
+        url_path = request.url.path
+        
+        if "/register-student" in url_path:
+            context = {
+                "request": request,
+                "form": {
+                    "name": "",
+                    "matric_no": "",
+                    "email": "",
+                    "program": "",
+                    "year_of_study": "",
+                    "phone_number": "",
+                },
+                "errors": errors_dict,
+            }
+            return templates.TemplateResponse(
+                "auth/register_student.html",
+                context,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        elif "/request-reset" in url_path:
+            context = {
+                "request": request,
+                "submitted": False,
+                "error": "Please fill in all required fields.",
+                "email": "",
+            }
+            return templates.TemplateResponse(
+                "auth/request_reset.html",
+                context,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        elif "/verify-otp" in url_path:
+            context = {
+                "request": request,
+                "email": request.session.get("reset_email", ""),
+                "error": "Please enter a valid 6-digit OTP code.",
+            }
+            return templates.TemplateResponse(
+                "auth/verify_otp.html",
+                context,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        elif "/reset-password" in url_path:
+            context = {
+                "request": request,
+                "errors": errors_dict,
+            }
+            return templates.TemplateResponse(
+                "auth/reset_password.html",
+                context,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+    
+    # For API requests, return JSON
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors()},
+    )
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -46,7 +149,7 @@ app.add_middleware(SessionMiddleware, secret_key="CHANGE_ME_TO_A_RANDOM_SECRET")
 
 # Static + templates configuration
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+# templates already defined above for exception handlers
 
 # Routers
 app.include_router(auth_router_module.router, prefix="/auth", tags=["auth"])
