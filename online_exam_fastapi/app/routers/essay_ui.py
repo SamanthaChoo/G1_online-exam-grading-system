@@ -19,7 +19,7 @@ from app.services.essay_service import (
     timeout_attempt,
 )
 from datetime import timezone
-from fastapi import APIRouter, Depends, Form, Request, Query, HTTPException
+from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select

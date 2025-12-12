@@ -18,17 +18,14 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.exceptions import RequestValidationError
 from sqlmodel import Session, select
 from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(title="Online Examination & Grading System")
 
 # Templates must be defined before exception handlers that use them
-from fastapi.templating import Jinja2Templates
-
 templates = Jinja2Templates(directory="app/templates")
-
-from fastapi.exceptions import RequestValidationError
 
 
 @app.exception_handler(RequestValidationError)

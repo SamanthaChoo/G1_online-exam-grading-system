@@ -239,11 +239,14 @@ def edit_answer(
 
     if attempt.status != "in_progress":
         raise ValueError(
-            f"Cannot edit answers for attempt with status '{attempt.status}'. Only 'in_progress' attempts can be edited."
+            f"Cannot edit answers for attempt with status '{attempt.status}'. "
+            f"Only 'in_progress' attempts can be edited."
         )
 
     # Find the answer
-    stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == question_id))
+    stmt = select(EssayAnswer).where(
+        (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == question_id)
+    )
     answer = session.exec(stmt).first()
 
     if not answer:

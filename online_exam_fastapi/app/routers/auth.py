@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from app.auth_utils import (
-    create_reset_token,
     generate_otp,
     hash_password,
     verify_password,
@@ -173,7 +172,8 @@ def check_student_id(
         if existing_student.user_id:
             return {
                 "available": False,
-                "message": "This Student ID is already registered with an account. Please use a different ID or try logging in.",
+                "message": "This Student ID is already registered with an account. "
+                "Please use a different ID or try logging in.",
             }
         else:
             return {
@@ -245,7 +245,8 @@ def register_student(
             # Check if this student already has a user account
             if existing_student_exact.user_id:
                 errors["matric_no"] = (
-                    "This Student ID is already registered with an account. Please use a different ID or try logging in."
+                    "This Student ID is already registered with an account. "
+                    "Please use a different ID or try logging in."
                 )
             else:
                 errors["matric_no"] = (
@@ -473,7 +474,7 @@ def request_reset(
     existing_otps = session.exec(
         select(PasswordResetOTP).where(
             PasswordResetOTP.user_id == user.id,
-            PasswordResetOTP.used == False,
+            PasswordResetOTP.used is False,
             PasswordResetOTP.expires_at > datetime.utcnow(),
         )
     ).all()
@@ -530,7 +531,7 @@ def _load_valid_otp(otp_code: str, user_id: int, session: Session) -> PasswordRe
         select(PasswordResetOTP).where(
             PasswordResetOTP.otp_code == otp_code,
             PasswordResetOTP.user_id == user_id,
-            PasswordResetOTP.used == False,
+            PasswordResetOTP.used is False,
         )
     ).first()
     if not reset_otp:
@@ -628,7 +629,7 @@ def resend_otp(
     existing_otps = session.exec(
         select(PasswordResetOTP).where(
             PasswordResetOTP.user_id == user.id,
-            PasswordResetOTP.used == False,
+            PasswordResetOTP.used is False,
             PasswordResetOTP.expires_at > datetime.utcnow(),
         )
     ).all()
@@ -862,7 +863,8 @@ def profile_update(
         # Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
         elif not all(c.isdigit() or c in " +-()" for c in phone_clean):
             errors["phone"] = (
-                "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
+                "Phone number contains invalid characters. Only digits, spaces, hyphens, "
+                "parentheses, and + are allowed."
             )
 
     # Lecturer-specific validation
@@ -914,7 +916,8 @@ def profile_update(
             # Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
             elif not all(c.isdigit() or c in " +-()" for c in phone_number_clean):
                 errors["phone_number"] = (
-                    "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
+                    "Phone number contains invalid characters. Only digits, spaces, hyphens, "
+                    "parentheses, and + are allowed."
                 )
 
     if errors:
