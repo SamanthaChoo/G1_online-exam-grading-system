@@ -3,7 +3,12 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from app.auth_utils import create_reset_token, generate_otp, hash_password, verify_password
+from app.auth_utils import (
+    create_reset_token,
+    generate_otp,
+    hash_password,
+    verify_password,
+)
 from app.database import get_session
 from app.deps import get_current_user, require_login
 from app.email_utils import send_otp_email
@@ -20,15 +25,23 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/login")
-def login_form(request: Request, current_user: Optional[User] = Depends(get_current_user)):
+def login_form(
+    request: Request, current_user: Optional[User] = Depends(get_current_user)
+):
     if current_user:
         # Already logged in – send to a sensible default depending on role
         if current_user.role == "admin":
-            return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(
+                url="/admin/users", status_code=status.HTTP_303_SEE_OTHER
+            )
         elif current_user.role == "lecturer":
-            return RedirectResponse(url="/courses/", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(
+                url="/courses/", status_code=status.HTTP_303_SEE_OTHER
+            )
         else:  # student
-            return RedirectResponse(url="/courses/student", status_code=status.HTTP_303_SEE_OTHER)
+            return RedirectResponse(
+                url="/courses/student", status_code=status.HTTP_303_SEE_OTHER
+            )
 
     context = {"request": request, "form": None, "error": None}
     return templates.TemplateResponse("auth/login.html", context)
@@ -69,7 +82,11 @@ def login(
             staff_id_clean = staff_id.strip()
             form_data["staff_id"] = staff_id
             # Find lecturer by staff_id
-            user = session.exec(select(User).where(User.staff_id == staff_id_clean, User.role == "lecturer")).first()
+            user = session.exec(
+                select(User).where(
+                    User.staff_id == staff_id_clean, User.role == "lecturer"
+                )
+            ).first()
             if not user:
                 error = "Invalid Staff ID or password. Please check your Staff ID and try again."
             elif user and user.role != "lecturer":
@@ -83,7 +100,9 @@ def login(
             matric_clean = matric_no.strip()
             form_data["matric_no"] = matric_no
             # Find student by matric number
-            student = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
+            student = session.exec(
+                select(Student).where(Student.matric_no == matric_clean)
+            ).first()
             if student and student.user_id:
                 # Get the linked user account
                 user = session.get(User, student.user_id)
@@ -96,7 +115,9 @@ def login(
     # Validate password and account status
     if user:
         if not verify_password(password, user.password_hash):
-            error = "Invalid credentials. Please check your login details and try again."
+            error = (
+                "Invalid credentials. Please check your login details and try again."
+            )
             user = None
         elif not user.is_active:
             error = "Your account is inactive. Please contact an administrator."
@@ -111,7 +132,9 @@ def login(
             "form": form_data,
             "error": error or "Invalid login credentials. Please try again.",
         }
-        return templates.TemplateResponse("auth/login.html", context, status_code=status.HTTP_400_BAD_REQUEST)
+        return templates.TemplateResponse(
+            "auth/login.html", context, status_code=status.HTTP_400_BAD_REQUEST
+        )
 
     # Update last_login timestamp
     from datetime import datetime
@@ -157,13 +180,15 @@ def check_student_id(
 ):
     """API endpoint to check if a student ID already exists (for live validation)."""
     matric_clean = matric_no.strip()
-    
+
     if not matric_clean or len(matric_clean) < 3:
         return {"available": True, "message": ""}
-    
+
     # Check for exact match
-    existing_student = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
-    
+    existing_student = session.exec(
+        select(Student).where(Student.matric_no == matric_clean)
+    ).first()
+
     if existing_student:
         if existing_student.user_id:
             return {
@@ -175,18 +200,18 @@ def check_student_id(
                 "available": False,
                 "message": "This Student ID is already registered. Please use a different ID or contact support.",
             }
-    
+
     # Also check case-insensitively
     existing_case = session.exec(
         select(Student).where(func.lower(Student.matric_no) == matric_clean.lower())
     ).first()
-    
+
     if existing_case and existing_case.matric_no != matric_clean:
         return {
             "available": False,
             "message": "A similar Student ID already exists. Please check your Student ID and try again.",
         }
-    
+
     return {"available": True, "message": ""}
 
 
@@ -237,21 +262,34 @@ def register_student(
     # Check for duplicate matric_no (case-insensitive and check if already has a user account)
     if "matric_no" not in errors:
         # Check for exact match (case-sensitive first, as matric numbers are usually case-sensitive)
-        existing_student_exact = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
+        existing_student_exact = session.exec(
+            select(Student).where(Student.matric_no == matric_clean)
+        ).first()
         if existing_student_exact:
             # Check if this student already has a user account
             if existing_student_exact.user_id:
-                errors["matric_no"] = "This Student ID is already registered with an account. Please use a different ID or try logging in."
+                errors["matric_no"] = (
+                    "This Student ID is already registered with an account. Please use a different ID or try logging in."
+                )
             else:
-                errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
-        
+                errors["matric_no"] = (
+                    "This Student ID is already registered. Please use a different ID or contact support."
+                )
+
         # Also check case-insensitively to catch variations (only if exact match didn't find anything)
         if "matric_no" not in errors:
             existing_student_case = session.exec(
-                select(Student).where(func.lower(Student.matric_no) == matric_clean.lower())
+                select(Student).where(
+                    func.lower(Student.matric_no) == matric_clean.lower()
+                )
             ).first()
-            if existing_student_case and existing_student_case.matric_no != matric_clean:
-                errors["matric_no"] = "A similar Student ID already exists. Please check your Student ID and try again."
+            if (
+                existing_student_case
+                and existing_student_case.matric_no != matric_clean
+            ):
+                errors["matric_no"] = (
+                    "A similar Student ID already exists. Please check your Student ID and try again."
+                )
 
     # Email validation with TLD checking
     email_error = validate_email_format(email_clean)
@@ -260,13 +298,21 @@ def register_student(
 
     # Check for existing email in both User and Student tables (only if email format is valid)
     if "email" not in errors:
-        existing_user = session.exec(select(User).where(User.email == email_clean)).first()
+        existing_user = session.exec(
+            select(User).where(User.email == email_clean)
+        ).first()
         if existing_user:
-            errors["email"] = "This email is already registered. Please use a different email or try logging in."
+            errors["email"] = (
+                "This email is already registered. Please use a different email or try logging in."
+            )
         else:
-            existing_student_email = session.exec(select(Student).where(Student.email == email_clean)).first()
+            existing_student_email = session.exec(
+                select(Student).where(Student.email == email_clean)
+            ).first()
             if existing_student_email:
-                errors["email"] = "This email is already registered. Please use a different email or try logging in."
+                errors["email"] = (
+                    "This email is already registered. Please use a different email or try logging in."
+                )
 
     # Optional: Program validation
     if program_clean:
@@ -305,7 +351,9 @@ def register_student(
     elif not any(c.isdigit() for c in password):
         errors["password"] = "Password must contain at least one number."
     elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
-        errors["password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        errors["password"] = (
+            "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        )
 
     # Confirm password validation
     if not confirm_password:
@@ -334,9 +382,13 @@ def register_student(
 
     # Create Student record
     # Double-check uniqueness before creating (in case of race condition)
-    final_check = session.exec(select(Student).where(Student.matric_no == matric_clean)).first()
+    final_check = session.exec(
+        select(Student).where(Student.matric_no == matric_clean)
+    ).first()
     if final_check:
-        errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+        errors["matric_no"] = (
+            "This Student ID is already registered. Please use a different ID or contact support."
+        )
         context = {
             "request": request,
             "form": {
@@ -354,7 +406,7 @@ def register_student(
             context,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     student = Student(
         name=name_clean,
         email=email_clean,
@@ -369,8 +421,14 @@ def register_student(
     except Exception as e:
         session.rollback()
         # Check if it's a unique constraint violation
-        if "uq_student_matric_no" in str(e) or "UNIQUE constraint" in str(e) or "unique" in str(e).lower():
-            errors["matric_no"] = "This Student ID is already registered. Please use a different ID or contact support."
+        if (
+            "uq_student_matric_no" in str(e)
+            or "UNIQUE constraint" in str(e)
+            or "unique" in str(e).lower()
+        ):
+            errors["matric_no"] = (
+                "This Student ID is already registered. Please use a different ID or contact support."
+            )
             context = {
                 "request": request,
                 "form": {
@@ -410,7 +468,9 @@ def register_student(
     # Auto-login newly registered student
     request.session["user_id"] = user.id
 
-    return RedirectResponse(url="/courses/student", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/courses/student", status_code=status.HTTP_303_SEE_OTHER
+    )
 
 
 @router.get("/request-reset")
@@ -426,7 +486,7 @@ def request_reset(
     session: Session = Depends(get_session),
 ):
     email_clean = email.strip().lower()
-    
+
     # Validate email format first (including TLD check)
     email_error = validate_email_format(email_clean)
     if email_error:
@@ -441,7 +501,7 @@ def request_reset(
             context,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     user = session.exec(select(User).where(User.email == email_clean)).first()
 
     # Check if email exists
@@ -511,8 +571,14 @@ def request_reset(
 
 
 def _load_valid_token(token: str, session: Session) -> PasswordResetToken:
-    reset_token = session.exec(select(PasswordResetToken).where(PasswordResetToken.token == token)).first()
-    if not reset_token or reset_token.used or reset_token.expires_at < datetime.utcnow():
+    reset_token = session.exec(
+        select(PasswordResetToken).where(PasswordResetToken.token == token)
+    ).first()
+    if (
+        not reset_token
+        or reset_token.used
+        or reset_token.expires_at < datetime.utcnow()
+    ):
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
     return reset_token
 
@@ -529,7 +595,9 @@ def _load_valid_otp(otp_code: str, user_id: int, session: Session) -> PasswordRe
     if not reset_otp:
         raise HTTPException(status_code=400, detail="Invalid OTP code.")
     if reset_otp.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="OTP code has expired. Please request a new one.")
+        raise HTTPException(
+            status_code=400, detail="OTP code has expired. Please request a new one."
+        )
     return reset_otp
 
 
@@ -538,7 +606,9 @@ def verify_otp_form(request: Request):
     """Show OTP verification form."""
     user_id = request.session.get("reset_user_id")
     if not user_id:
-        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     context = {
         "request": request,
@@ -557,7 +627,9 @@ def verify_otp(
     """Verify OTP code and redirect to password reset form."""
     user_id = request.session.get("reset_user_id")
     if not user_id:
-        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     otp_clean = otp_code.strip()
 
@@ -585,7 +657,9 @@ def verify_otp(
         request.session["otp_verified"] = True
         request.session["reset_user_id"] = user_id
 
-        return RedirectResponse(url="/auth/reset-password", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/reset-password", status_code=status.HTTP_303_SEE_OTHER
+        )
     except HTTPException as exc:
         context = {
             "request": request,
@@ -607,11 +681,15 @@ def resend_otp(
     """Resend OTP code."""
     user_id = request.session.get("reset_user_id")
     if not user_id:
-        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     user = session.get(User, user_id)
     if not user:
-        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     # Generate new OTP
     otp_code = generate_otp()
@@ -670,7 +748,9 @@ def reset_password_form(
     otp_verified = request.session.get("otp_verified")
 
     if not user_id or not otp_verified:
-        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     context = {"request": request, "errors": {}}
     return templates.TemplateResponse("auth/reset_password.html", context)
@@ -688,7 +768,9 @@ def reset_password(
     otp_verified = request.session.get("otp_verified")
 
     if not user_id or not otp_verified:
-        return RedirectResponse(url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/request-reset", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     errors: dict[str, str] = {}
 
@@ -706,7 +788,9 @@ def reset_password(
     elif not any(c.isdigit() for c in password):
         errors["password"] = "Password must contain at least one number."
     elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
-        errors["password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        errors["password"] = (
+            "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        )
 
     # Confirm password validation
     if not confirm_password:

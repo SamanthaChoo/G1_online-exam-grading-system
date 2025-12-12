@@ -54,7 +54,12 @@ def essay_index(
     # Build metadata for each exam indicating whether it has any questions.
     exams_meta = []
     for ex in exams:
-        has_q = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == ex.id)).first() is not None
+        has_q = (
+            session.exec(
+                select(ExamQuestion).where(ExamQuestion.exam_id == ex.id)
+            ).first()
+            is not None
+        )
         exams_meta.append({"exam": ex, "has_questions": has_q})
     return templates.TemplateResponse(
         "essay/index.html",
@@ -63,11 +68,25 @@ def essay_index(
 
 
 @router.get("/essay/{exam_id}/questions")
-def essay_questions(exam_id: int, request: Request, session: Session = Depends(get_session), current_user: User | None = Depends(get_current_user)):
+def essay_questions(
+    exam_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_current_user),
+):
     exam = session.get(Exam, exam_id)
     qs = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
     error = request.query_params.get("error")
-    return templates.TemplateResponse("essay/questions.html", {"request": request, "exam": exam, "questions": qs, "error": error, "current_user": current_user})
+    return templates.TemplateResponse(
+        "essay/questions.html",
+        {
+            "request": request,
+            "exam": exam,
+            "questions": qs,
+            "error": error,
+            "current_user": current_user,
+        },
+    )
 
 
 @router.get("/essay/questions/select")
@@ -92,7 +111,9 @@ def select_exam_for_question(
                 "error": "Students are not allowed to create questions.",
             },
         )
-    return templates.TemplateResponse("essay/select_exam.html", {"request": request, "exams": exams})
+    return templates.TemplateResponse(
+        "essay/select_exam.html", {"request": request, "exams": exams}
+    )
 
 
 @router.post("/essay/questions/select")
@@ -101,7 +122,9 @@ def select_exam_for_question_submit(exam_id: int = Form(...)):
 
 
 @router.get("/essay/questions/new")
-def new_question_select_redirect(request: Request, session: Session = Depends(get_session)):
+def new_question_select_redirect(
+    request: Request, session: Session = Depends(get_session)
+):
     """Ensure the user is always prompted to select an exam first.
 
     The UI should require selecting an exam before showing the create-question
@@ -129,7 +152,9 @@ def new_question_form(
                 "error": "Students are not allowed to create questions.",
             },
         )
-    return templates.TemplateResponse("essay/new_question.html", {"request": request, "exam": exam})
+    return templates.TemplateResponse(
+        "essay/new_question.html", {"request": request, "exam": exam}
+    )
 
 
 @router.post("/essay/{exam_id}/questions/new")
@@ -156,10 +181,10 @@ def edit_question_form(
 ):
     exam = session.get(Exam, exam_id)
     question = get_question(session, question_id)
-    
+
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
-    
+
     # Check if exam has any answers - prevent editing if it does
     if _exam_has_answers(session, exam_id):
         return templates.TemplateResponse(
@@ -172,7 +197,7 @@ def edit_question_form(
                 "current_user": current_user,
             },
         )
-    
+
     # Students should not be able to edit questions
     if current_user and current_user.role == "student":
         return templates.TemplateResponse(
@@ -185,10 +210,15 @@ def edit_question_form(
                 "current_user": current_user,
             },
         )
-    
+
     return templates.TemplateResponse(
         "essay/edit_question.html",
-        {"request": request, "exam": exam, "question": question, "current_user": current_user},
+        {
+            "request": request,
+            "exam": exam,
+            "question": question,
+            "current_user": current_user,
+        },
     )
 
 
@@ -202,8 +232,11 @@ def update_question(
 ):
     # Check if exam has any answers - prevent editing if it does
     if _exam_has_answers(session, exam_id):
-        raise HTTPException(status_code=400, detail="Cannot edit questions after students have submitted answers.")
-    
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot edit questions after students have submitted answers.",
+        )
+
     try:
         edit_question(session, question_id, question_text, max_marks)
     except ValueError as e:
@@ -222,22 +255,22 @@ def delete_question_ui(
     if current_user and current_user.role == "student":
         return RedirectResponse(
             url=f"/essay/{exam_id}/questions?error=Students+are+not+allowed+to+delete+questions.",
-            status_code=303
+            status_code=303,
         )
-    
+
     # Check if exam has any answers - prevent deleting if it does
     if _exam_has_answers(session, exam_id):
         return RedirectResponse(
             url=f"/essay/{exam_id}/questions?error=Cannot+delete+questions+after+students+have+submitted+answers.",
-            status_code=303
+            status_code=303,
         )
-    
+
     try:
         delete_question(session, question_id)
     except ValueError as e:
         return RedirectResponse(
             url=f"/essay/{exam_id}/questions?error={str(e).replace(' ', '+')}",
-            status_code=303
+            status_code=303,
         )
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
 
@@ -249,17 +282,23 @@ def list_attempts(
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_current_user),
 ):
-    attempts = session.exec(select(ExamAttempt).where(ExamAttempt.exam_id == exam_id)).all()
+    attempts = session.exec(
+        select(ExamAttempt).where(ExamAttempt.exam_id == exam_id)
+    ).all()
     exam = session.get(Exam, exam_id)
 
     # Prepare per-attempt stats: number of questions, graded count, total score
-    questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
+    questions = session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
     total_questions = len(questions)
     total_possible = sum((q.max_marks or 0) for q in questions)
 
     attempts_with_stats = []
     for a in attempts:
-        ans = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == a.id)).all()
+        ans = session.exec(
+            select(EssayAnswer).where(EssayAnswer.attempt_id == a.id)
+        ).all()
         graded_count = sum(1 for x in ans if x.marks_awarded is not None)
         score = sum((x.marks_awarded or 0) for x in ans)
         attempts_with_stats.append(
@@ -277,9 +316,13 @@ def list_attempts(
         # find student id
         student_id = current_user.student_id
         if student_id is None:
-            s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+            s = session.exec(
+                select(Student).where(Student.user_id == current_user.id)
+            ).first()
             student_id = s.id if s else None
-        filtered = [x for x in attempts_with_stats if x["attempt"].student_id == student_id]
+        filtered = [
+            x for x in attempts_with_stats if x["attempt"].student_id == student_id
+        ]
         return templates.TemplateResponse(
             "essay/attempts.html",
             {
@@ -314,13 +357,17 @@ def start_submit(
     # Resolve the Student.id linked to this user
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
     if student_id is None:
         # No linked student record - cannot start attempt
-        return RedirectResponse(url=f"/essay/{exam_id}/start?no_student=true", status_code=303)
+        return RedirectResponse(
+            url=f"/essay/{exam_id}/start?no_student=true", status_code=303
+        )
 
     exam = session.get(Exam, exam_id)
     if not exam:
@@ -334,15 +381,21 @@ def start_submit(
             )
         ).first()
         if enrollment is None:
-            raise HTTPException(status_code=403, detail="You are not enrolled in this course.")
+            raise HTTPException(
+                status_code=403, detail="You are not enrolled in this course."
+            )
 
     attempt = start_attempt(session, exam_id, student_id)
     # If the returned attempt is not in-progress it means the student already
     # has a final attempt (submitted/timed_out). Stay on start page and show an error.
     if attempt and attempt.status != "in_progress":
-        return RedirectResponse(url=f"/essay/{exam_id}/start?already=true", status_code=303)
+        return RedirectResponse(
+            url=f"/essay/{exam_id}/start?already=true", status_code=303
+        )
 
-    return RedirectResponse(url=f"/essay/{exam_id}/attempt/{attempt.id}", status_code=303)
+    return RedirectResponse(
+        url=f"/essay/{exam_id}/attempt/{attempt.id}", status_code=303
+    )
 
 
 @router.get("/essay/{exam_id}/attempt/{attempt_id}")
@@ -354,14 +407,21 @@ def attempt_view(
 ):
     exam = session.get(Exam, exam_id)
     attempt = session.get(ExamAttempt, attempt_id)
-    questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
-    answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)).all()
+    questions = session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
+    answers = session.exec(
+        select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)
+    ).all()
     answers_map = {a.question_id: a for a in answers}
     # Compute how many attempts this student has for this exam — used by UI to warn
     attempts_count = 0
     if attempt and attempt.student_id is not None:
         attempts_for_student = session.exec(
-            select(ExamAttempt).where((ExamAttempt.exam_id == exam_id) & (ExamAttempt.student_id == attempt.student_id))
+            select(ExamAttempt).where(
+                (ExamAttempt.exam_id == exam_id)
+                & (ExamAttempt.student_id == attempt.student_id)
+            )
         ).all()
         attempts_count = len(attempts_for_student)
     # Provide a timezone-safe epoch-millisecond for JS to construct Date()
@@ -429,7 +489,9 @@ async def attempt_submit(
     if student_id is not None:
         submit_answers(session, exam_id, student_id, answers)
     # After a normal submit, show a friendly confirmation page
-    return RedirectResponse(url=f"/essay/{exam_id}/attempt/{attempt_id}/submitted", status_code=303)
+    return RedirectResponse(
+        url=f"/essay/{exam_id}/attempt/{attempt_id}/submitted", status_code=303
+    )
 
 
 @router.get("/essay/{exam_id}/attempt/{attempt_id}/submitted")
@@ -441,7 +503,9 @@ def attempt_submitted(
 ):
     exam = session.get(Exam, exam_id)
     attempt = session.get(ExamAttempt, attempt_id)
-    return templates.TemplateResponse("essay/submitted.html", {"request": request, "exam": exam, "attempt": attempt})
+    return templates.TemplateResponse(
+        "essay/submitted.html", {"request": request, "exam": exam, "attempt": attempt}
+    )
 
 
 @router.post("/essay/{exam_id}/attempt/{attempt_id}/timeout")
@@ -470,7 +534,9 @@ async def attempt_timeout(
             return RedirectResponse(url=f"/essay/{exam_id}/attempts", status_code=303)
 
     # After a timeout, show an auto-submitted confirmation page
-    return RedirectResponse(url=f"/essay/{exam_id}/attempt/{attempt_id}/auto_submitted", status_code=303)
+    return RedirectResponse(
+        url=f"/essay/{exam_id}/attempt/{attempt_id}/auto_submitted", status_code=303
+    )
 
 
 @router.get("/essay/{exam_id}/grade/{attempt_id}")
@@ -483,8 +549,12 @@ def grade_form(
 ):
     exam = session.get(Exam, exam_id)
     attempt = session.get(ExamAttempt, attempt_id)
-    questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
-    answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)).all()
+    questions = session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
+    answers = session.exec(
+        select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)
+    ).all()
     answers_map = {a.question_id: a for a in answers}
     # lookup student name if available for clearer UI
     student = None
@@ -493,7 +563,7 @@ def grade_form(
 
     # Check if all answers are graded (all have marks_awarded set)
     is_graded = all(a.marks_awarded is not None for a in answers) if answers else False
-    
+
     # Calculate total marks
     total_possible = sum(q.max_marks or 0 for q in questions)
     total_current = sum(
@@ -553,8 +623,12 @@ async def grade_submit(
         raise HTTPException(status_code=400, detail=str(e))
 
     # Build per-question breakdown to show on result page
-    qlist = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
-    answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)).all()
+    qlist = session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
+    answers = session.exec(
+        select(EssayAnswer).where(EssayAnswer.attempt_id == attempt_id)
+    ).all()
     answers_map = {a.question_id: a for a in answers}
     breakdown = []
     for q in qlist:
@@ -564,7 +638,9 @@ async def grade_submit(
                 "question_id": q.id,
                 "question_text": q.question_text,
                 "max_marks": q.max_marks,
-                "marks_awarded": (ans.marks_awarded if ans and ans.marks_awarded is not None else 0),
+                "marks_awarded": (
+                    ans.marks_awarded if ans and ans.marks_awarded is not None else 0
+                ),
                 "feedback": ans.grader_feedback if ans else None,
             }
         )
