@@ -2,17 +2,26 @@
 {% block content %}
 <div class="container py-5">
   <h2>Questions for {{ exam.title }}</h2>
+  {% if error %}
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
   <a class="btn btn-primary mb-3" href="/essay/{{ exam.id }}/questions/new">Add Question</a>
   <table class="table">
     <thead><tr><th>#</th><th>Question</th><th>Max Marks</th><th>Actions</th></tr></thead>
     <tbody>
       {% for q in questions %}
       <tr>
-        <td>{{ q.id }}</td>
+        <td>{{ loop.index }}</td>
         <td>{{ q.question_text }}</td>
         <td>{{ q.max_marks }}</td>
         <td>
-          <a class="btn btn-sm btn-warning" href="/essay/{{ exam.id }}/questions/{{ q.id }}/edit">Edit</a>
+          <a class="btn btn-sm btn-primary" href="/essay/{{ exam.id }}/questions/{{ q.id }}/edit">Edit</a>
+          <form method="POST" action="/essay/{{ exam.id }}/questions/{{ q.id }}/delete" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this question?');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
         </td>
       </tr>
       {% else %}

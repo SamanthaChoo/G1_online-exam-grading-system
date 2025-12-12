@@ -21,14 +21,6 @@
     {% endif %}
   </div>
 
-  {% set total_possible = 0 %}
-  {% set total_current = 0 %}
-  {% for q in questions %}
-    {% set total_possible = total_possible + (q.max_marks or 0) %}
-    {% set current_marks = (answers_map.get(q.id).marks_awarded if answers_map.get(q.id) and answers_map.get(q.id).marks_awarded is not none else 0) %}
-    {% set total_current = total_current + current_marks %}
-  {% endfor %}
-
   <!-- Final Score Summary (Always Visible) -->
   <div class="card mb-4 border-success" {% if is_graded %}style="background-color:#f0fff4;"{% endif %}>
     <div class="card-body text-center">

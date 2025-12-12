@@ -407,7 +407,7 @@ class TestDeleteEssayQuestion:
     def test_delete_nonexistent_returns_error(self, client, session: Session):
         """GIVEN a nonexistent question ID
         WHEN trying to delete it
-        THEN the system should return 400."""
+        THEN the system should redirect with error query param."""
         course = Course(name="Test Course 13", code="C13")
         session.add(course)
         session.commit()
@@ -419,15 +419,15 @@ class TestDeleteEssayQuestion:
         session.refresh(exam)
         
         # Execute with nonexistent ID
-        response = client.post(f"/essay/{exam.id}/questions/9999/delete")
+        response = client.post(f"/essay/{exam.id}/questions/9999/delete", follow_redirects=False)
         
-        # Verify
-        assert response.status_code == 400
+        # Verify - should redirect to questions page with error
+        assert response.status_code == 303
 
     def test_delete_race_condition(self, client, session: Session):
         """GIVEN a deleted question
         WHEN attempting to delete it again
-        THEN the system should handle gracefully."""
+        THEN the system should redirect with error."""
         course = Course(name="Test Course 14", code="C14")
         session.add(course)
         session.commit()
@@ -448,17 +448,17 @@ class TestDeleteEssayQuestion:
         response1 = client.post(f"/essay/{exam.id}/questions/{q_id}/delete")
         assert response1.status_code in [200, 303]
         
-        response2 = client.post(f"/essay/{exam.id}/questions/{q_id}/delete")
+        response2 = client.post(f"/essay/{exam.id}/questions/{q_id}/delete", follow_redirects=False)
         
-        # Verify
-        assert response2.status_code == 400
+        # Verify - should redirect since question doesn't exist
+        assert response2.status_code == 303
 
     def test_delete_invalid_exam(self, client, session: Session):
         """GIVEN invalid exam and question IDs
         WHEN attempting to delete
-        THEN the system should return error."""
+        THEN the system should redirect with error."""
         # Execute with nonexistent exam
-        response = client.post(f"/essay/9999/questions/9999/delete")
+        response = client.post(f"/essay/9999/questions/9999/delete", follow_redirects=False)
         
-        # Verify - may return 400 or 404 depending on implementation
-        assert response.status_code in [400, 404]
+        # Verify - should redirect even if exam doesn't exist
+        assert response.status_code == 303

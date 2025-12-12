@@ -1,31 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-5">
+<div class="container mt-4">
   <h2>Essay Exams</h2>
   <p class="text-muted">List of exams with essay functionality</p>
-  <ul>
-    {% for item in exams_meta %}
-      {% set exam = item.exam %}
-      {% set has_questions = item.has_questions %}
-      <li>
-        <strong>{{ exam.title }}</strong>
-        {%- if not current_user or current_user.role != 'student' -%}
-          - <a href="/essay/{{ exam.id }}/questions">Questions</a>
-        {%- endif -%}
-        {%- if current_user and current_user.role == 'student' and has_questions -%}
-          - <a href="/essay/{{ exam.id }}/start">Start Attempt</a>
-        {%- endif -%}
-        {%- if current_user and current_user.role in ['lecturer','admin'] -%}
-          - <a href="/essay/{{ exam.id }}/attempts">Grade Result</a>
-        {%- else -%}
-          {%- if has_questions -%}
-            - <a href="/essay/{{ exam.id }}/attempts">Results</a>
-          {%- endif -%}
-        {%- endif -%}
-      </li>
-    {% else %}
-      <li>No exams found</li>
-    {% endfor %}
-  </ul>
+  <table class="table table-bordered table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Subject</th>
+        <th>Status</th>
+        <th>Start Time</th>
+        <th>End Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in exams_meta %}
+        {% set exam = item.exam %}
+        {% set has_questions = item.has_questions %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ exam.title }}</td>
+          <td>{{ exam.subject or '-' }}</td>
+          <td>{{ exam.status }}</td>
+          <td>{{ exam.start_time or '-' }}</td>
+          <td>{{ exam.end_time or '-' }}</td>
+          <td>
+            {%- if not current_user or current_user.role != 'student' -%}
+              <a href="/essay/{{ exam.id }}/questions" class="btn btn-primary btn-sm">Add Question</a>
+            {%- endif -%}
+            {%- if current_user and current_user.role == 'student' and has_questions -%}
+              <a href="/essay/{{ exam.id }}/start" class="btn btn-info btn-sm ms-2">Start Attempt</a>
+            {%- endif -%}
+            {%- if current_user and current_user.role in ['lecturer','admin'] -%}
+              <a href="/essay/{{ exam.id }}/attempts" class="btn btn-success btn-sm ms-2">Grade Result</a>
+            {%- else -%}
+              {%- if has_questions -%}
+                <a href="/essay/{{ exam.id }}/attempts" class="btn btn-info btn-sm ms-2">Results</a>
+              {%- endif -%}
+            {%- endif -%}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-center">No exams found</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}
