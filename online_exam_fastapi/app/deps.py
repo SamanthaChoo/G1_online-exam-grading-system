@@ -8,9 +8,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlmodel import Session
 
 
-def get_current_user(
-    request: Request, session: Session = Depends(get_session)
-) -> Optional[User]:
+def get_current_user(request: Request, session: Session = Depends(get_session)) -> Optional[User]:
     """Return the currently logged-in user based on the session cookie, if any."""
     user_id = request.session.get("user_id")
     if not user_id:
