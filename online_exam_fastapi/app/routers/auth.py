@@ -837,7 +837,7 @@ def profile_view(
     student = None
     if current_user.role == "student" and current_user.student_id:
         student = session.get(Student, current_user.student_id)
-    
+
     context = {
         "request": request,
         "current_user": current_user,
@@ -857,13 +857,13 @@ def profile_edit_form(
     student = None
     if current_user.role == "student" and current_user.student_id:
         student = session.get(Student, current_user.student_id)
-    
+
     form = {
         "name": current_user.name,
         "email": current_user.email,
         "phone": getattr(current_user, "phone", None) or "",
     }
-    
+
     # Add role-specific fields
     if current_user.role == "lecturer":
         form["title"] = getattr(current_user, "title", None) or ""
@@ -871,9 +871,11 @@ def profile_edit_form(
     elif current_user.role == "student" and student:
         form["matric_no"] = student.matric_no
         form["program"] = student.program or ""
-        form["year_of_study"] = str(student.year_of_study) if student.year_of_study else ""
+        form["year_of_study"] = (
+            str(student.year_of_study) if student.year_of_study else ""
+        )
         form["phone_number"] = student.phone_number or ""
-    
+
     context = {
         "request": request,
         "current_user": current_user,
@@ -900,7 +902,7 @@ def profile_update(
 ):
     """Update user profile."""
     errors: dict[str, str] = {}
-    
+
     name_clean = name.strip()
     email_clean = email.strip().lower()
     phone_clean = phone.strip() if phone and phone.strip() else None
@@ -908,8 +910,10 @@ def profile_update(
     staff_id_clean = staff_id.strip() if staff_id and staff_id.strip() else None
     program_clean = program.strip() if program and program.strip() else None
     year_of_study_int = None
-    phone_number_clean = phone_number.strip() if phone_number and phone_number.strip() else None
-    
+    phone_number_clean = (
+        phone_number.strip() if phone_number and phone_number.strip() else None
+    )
+
     # Name validation
     if not name_clean:
         errors["name"] = "Name is required."
@@ -917,18 +921,20 @@ def profile_update(
         errors["name"] = "Name must be at least 2 characters long."
     elif len(name_clean) > 100:
         errors["name"] = "Name must not exceed 100 characters."
-    
+
     # Email validation with TLD checking
     email_error = validate_email_format(email_clean)
     if email_error:
         errors["email"] = email_error
-    
+
     # Check for duplicate email on other users
     if "email" not in errors:
-        existing = session.exec(select(User).where(User.email == email_clean, User.id != current_user.id)).first()
+        existing = session.exec(
+            select(User).where(User.email == email_clean, User.id != current_user.id)
+        ).first()
         if existing:
             errors["email"] = "This email is already registered by another user."
-    
+
     # Phone validation - must contain digits and follow proper pattern
     if phone_clean:
         phone_digits = "".join(filter(str.isdigit, phone_clean))
@@ -938,32 +944,44 @@ def profile_update(
             errors["phone"] = "Please enter a valid phone number (7-15 digits)."
         # Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
         elif not all(c.isdigit() or c in " +-()" for c in phone_clean):
-            errors["phone"] = "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
-    
+            errors["phone"] = (
+                "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
+            )
+
     # Lecturer-specific validation
     if current_user.role == "lecturer":
         if title_clean and title_clean not in [
-            "", "Dr.", "Prof.", "Assoc. Prof.", "Mr.", "Ms.", "Mrs.", "Ir.", "Ts.",
+            "",
+            "Dr.",
+            "Prof.",
+            "Assoc. Prof.",
+            "Mr.",
+            "Ms.",
+            "Mrs.",
+            "Ir.",
+            "Ts.",
         ]:
             errors["title"] = "Please select a valid title."
-        
+
         if staff_id_clean:
             # Check for duplicate staff_id on other users
             existing_staff = session.exec(
-                select(User).where(User.staff_id == staff_id_clean, User.id != current_user.id)
+                select(User).where(
+                    User.staff_id == staff_id_clean, User.id != current_user.id
+                )
             ).first()
             if existing_staff:
                 errors["staff_id"] = "This Staff ID is already in use by another user."
-    
+
     # Student-specific validation
     student = None
     if current_user.role == "student":
         if current_user.student_id:
             student = session.get(Student, current_user.student_id)
-        
+
         if program_clean and len(program_clean) > 50:
             errors["program"] = "Program name must not exceed 50 characters."
-        
+
         if year_of_study:
             try:
                 year_of_study_int = int(year_of_study)
@@ -971,17 +989,23 @@ def profile_update(
                     errors["year_of_study"] = "Year of study must be between 1 and 10."
             except ValueError:
                 errors["year_of_study"] = "Please enter a valid year of study."
-        
+
         if phone_number_clean:
             phone_digits = "".join(filter(str.isdigit, phone_number_clean))
             if not phone_digits:
-                errors["phone_number"] = "Phone number must contain at least some digits."
+                errors["phone_number"] = (
+                    "Phone number must contain at least some digits."
+                )
             elif len(phone_digits) < 7 or len(phone_digits) > 15:
-                errors["phone_number"] = "Please enter a valid phone number (7-15 digits)."
+                errors["phone_number"] = (
+                    "Please enter a valid phone number (7-15 digits)."
+                )
             # Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
             elif not all(c.isdigit() or c in " +-()" for c in phone_number_clean):
-                errors["phone_number"] = "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
-    
+                errors["phone_number"] = (
+                    "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
+                )
+
     if errors:
         form = {
             "name": name,
@@ -1005,22 +1029,22 @@ def profile_update(
             context,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     # Update user fields
     current_user.name = name_clean
     current_user.email = email_clean
     if hasattr(current_user, "phone"):
         current_user.phone = phone_clean
-    
+
     # Update lecturer-specific fields
     if current_user.role == "lecturer":
         if hasattr(current_user, "title") and title_clean is not None:
             current_user.title = title_clean if title_clean else None
         if hasattr(current_user, "staff_id") and staff_id_clean is not None:
             current_user.staff_id = staff_id_clean if staff_id_clean else None
-    
+
     session.add(current_user)
-    
+
     # Update student record if applicable
     if current_user.role == "student" and student:
         student.name = name_clean
@@ -1032,9 +1056,9 @@ def profile_update(
         if phone_number_clean:
             student.phone_number = phone_number_clean
         session.add(student)
-    
+
     session.commit()
-    
+
     return RedirectResponse(url="/auth/profile", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -1060,11 +1084,11 @@ def change_password(
 ):
     """Change user password."""
     errors: dict[str, str] = {}
-    
+
     # Verify current password
     if not verify_password(current_password, current_user.password_hash):
         errors["current_password"] = "Current password is incorrect."
-    
+
     # New password validation
     if not new_password:
         errors["new_password"] = "New password is required."
@@ -1079,18 +1103,24 @@ def change_password(
     elif not any(c.isdigit() for c in new_password):
         errors["new_password"] = "Password must contain at least one number."
     elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in new_password):
-        errors["new_password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
-    
+        errors["new_password"] = (
+            "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+        )
+
     # Check if new password is same as current
-    if not errors.get("new_password") and verify_password(new_password, current_user.password_hash):
-        errors["new_password"] = "New password must be different from your current password."
-    
+    if not errors.get("new_password") and verify_password(
+        new_password, current_user.password_hash
+    ):
+        errors["new_password"] = (
+            "New password must be different from your current password."
+        )
+
     # Confirm password validation
     if not confirm_password:
         errors["confirm_password"] = "Please confirm your new password."
     elif new_password != confirm_password:
         errors["confirm_password"] = "Passwords do not match."
-    
+
     if errors:
         context = {
             "request": request,
@@ -1102,10 +1132,12 @@ def change_password(
             context,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     # Update password
     current_user.password_hash = hash_password(new_password)
     session.add(current_user)
     session.commit()
-    
-    return RedirectResponse(url="/auth/profile?password_changed=1", status_code=status.HTTP_303_SEE_OTHER)
+
+    return RedirectResponse(
+        url="/auth/profile?password_changed=1", status_code=status.HTTP_303_SEE_OTHER
+    )
