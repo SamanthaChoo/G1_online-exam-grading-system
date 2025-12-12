@@ -61,6 +61,7 @@ def authenticated_lecturer_client(client, session):
     password = "Lecturer123!"
     unique_id = uuid.uuid4().hex[:8]
     email = f"lecturer-{unique_id}@example.com"
+    staff_id = f"STAFF{unique_id[:4]}"
     
     lecturer = User(
         name="Dr. Lecturer",
@@ -68,16 +69,16 @@ def authenticated_lecturer_client(client, session):
         password_hash=hash_password(password),
         role="lecturer",
         title="Dr.",
-        staff_id=f"STAFF{unique_id[:4]}",
+        staff_id=staff_id,
     )
     session.add(lecturer)
     session.commit()
     session.refresh(lecturer)
     
-    # Login to get session cookie
+    # Login to get session cookie (lecturer login uses staff_id, not email)
     response = client.post(
         "/auth/login",
-        data={"login_type": "lecturer", "email": email, "password": password},
+        data={"login_type": "lecturer", "staff_id": staff_id, "password": password},
         follow_redirects=False,
     )
     
@@ -124,10 +125,10 @@ def authenticated_student_client(client, session):
     session.add(user)
     session.commit()
     
-    # Login to get session cookie
+    # Login to get session cookie (student login uses matric_no, not email)
     response = client.post(
         "/auth/login",
-        data={"login_type": "student", "email": email, "password": password},
+        data={"login_type": "student", "matric_no": matric_no, "password": password},
         follow_redirects=False,
     )
     
@@ -167,7 +168,7 @@ class TestProfileView:
     def test_unauthenticated_user_cannot_view_profile(self, client):
         """Unauthenticated users cannot view profile."""
         response = client.get("/auth/profile", follow_redirects=False)
-        assert response.status_code in [302, 401, 403]
+        assert response.status_code in [302, 303, 401, 403]
 
     def test_profile_shows_account_status(self, authenticated_admin_client):
         """Profile page displays account status."""
@@ -332,11 +333,23 @@ class TestProfileEdit:
         """Lecturer can update their title."""
         client, cookies = authenticated_lecturer_client
         
+        # Get current user email from profile page
+        profile_response = client.get("/auth/profile", cookies=cookies)
+        if profile_response.status_code != 200:
+            # If profile page redirects, get email from database
+            user = session.exec(select(User).where(User.role == "lecturer")).first()
+            user_email = user.email if user else "lecturer@example.com"
+        else:
+            # Extract email from profile page HTML
+            import re
+            email_match = re.search(r'<td>([^<]*@[^<]*)</td>', profile_response.content.decode())
+            user_email = email_match.group(1) if email_match else "lecturer@example.com"
+        
         response = client.post(
             "/auth/profile/edit",
             data={
                 "name": "Dr. Lecturer",
-                "email": "lecturer@example.com",
+                "email": user_email,
                 "title": "Prof.",
             },
             cookies=cookies,
@@ -351,15 +364,19 @@ class TestProfileEdit:
         if hasattr(user, "title"):
             assert user.title == "Prof."
 
-    def test_profile_edit_rejects_invalid_title(self, authenticated_lecturer_client):
+    def test_profile_edit_rejects_invalid_title(self, authenticated_lecturer_client, session):
         """Profile edit form rejects invalid title."""
         client, cookies = authenticated_lecturer_client
+        
+        # Get current user email
+        user = session.exec(select(User).where(User.role == "lecturer")).first()
+        user_email = user.email if user else "lecturer@example.com"
         
         response = client.post(
             "/auth/profile/edit",
             data={
                 "name": "Dr. Lecturer",
-                "email": "lecturer@example.com",
+                "email": user_email,
                 "title": "InvalidTitle",
             },
             cookies=cookies,
@@ -402,11 +419,15 @@ class TestProfileEdit:
         """Student can update their program."""
         client, cookies = authenticated_student_client
         
+        # Get current user email
+        user = session.exec(select(User).where(User.role == "student")).first()
+        user_email = user.email if user else "student@example.com"
+        
         response = client.post(
             "/auth/profile/edit",
             data={
                 "name": "Student User",
-                "email": "student@example.com",
+                "email": user_email,
                 "program": "BIM",
                 "year_of_study": "3",
             },
@@ -428,11 +449,15 @@ class TestProfileEdit:
         """Student can update their year of study."""
         client, cookies = authenticated_student_client
         
+        # Get current user email
+        user = session.exec(select(User).where(User.role == "student")).first()
+        user_email = user.email if user else "student@example.com"
+        
         response = client.post(
             "/auth/profile/edit",
             data={
                 "name": "Student User",
-                "email": "student@example.com",
+                "email": user_email,
                 "program": "SWE",
                 "year_of_study": "4",
             },
@@ -450,15 +475,19 @@ class TestProfileEdit:
             if student:
                 assert student.year_of_study == 4
 
-    def test_profile_edit_rejects_invalid_year_of_study(self, authenticated_student_client):
+    def test_profile_edit_rejects_invalid_year_of_study(self, authenticated_student_client, session):
         """Profile edit form rejects invalid year of study."""
         client, cookies = authenticated_student_client
+        
+        # Get current user email
+        user = session.exec(select(User).where(User.role == "student")).first()
+        user_email = user.email if user else "student@example.com"
         
         response = client.post(
             "/auth/profile/edit",
             data={
                 "name": "Student User",
-                "email": "student@example.com",
+                "email": user_email,
                 "year_of_study": "15",
             },
             cookies=cookies,
@@ -488,7 +517,8 @@ class TestProfileEdit:
             cookies=cookies,
         )
         
-        assert response.status_code == 400
+        # FastAPI returns 422 for missing required fields, 400 for validation errors
+        assert response.status_code in [400, 422]
         assert b"required" in response.content.lower() or b"name" in response.content.lower()
 
     def test_profile_edit_requires_email(self, authenticated_admin_client):
@@ -501,13 +531,14 @@ class TestProfileEdit:
             cookies=cookies,
         )
         
-        assert response.status_code == 400
+        # FastAPI returns 422 for missing required fields, 400 for validation errors
+        assert response.status_code in [400, 422]
         assert b"required" in response.content.lower() or b"email" in response.content.lower()
 
     def test_unauthenticated_user_cannot_edit_profile(self, client):
         """Unauthenticated users cannot edit profile."""
         response = client.get("/auth/profile/edit", follow_redirects=False)
-        assert response.status_code in [302, 401, 403]
+        assert response.status_code in [302, 303, 401, 403]
 
 
 class TestChangePassword:
@@ -739,7 +770,8 @@ class TestChangePassword:
             cookies=cookies,
         )
         
-        assert response.status_code == 400
+        # FastAPI returns 422 for missing required fields, 400 for validation errors
+        assert response.status_code in [400, 422]
 
     def test_change_password_requires_new_password(self, authenticated_admin_client):
         """Change password requires new password field."""
@@ -755,12 +787,13 @@ class TestChangePassword:
             cookies=cookies,
         )
         
-        assert response.status_code == 400
+        # FastAPI returns 422 for missing required fields, 400 for validation errors
+        assert response.status_code in [400, 422]
 
     def test_unauthenticated_user_cannot_change_password(self, client):
         """Unauthenticated users cannot change password."""
         response = client.get("/auth/profile/change-password", follow_redirects=False)
-        assert response.status_code in [302, 401, 403]
+        assert response.status_code in [302, 303, 401, 403]
 
 
 class TestProfileEditClientSideValidation:

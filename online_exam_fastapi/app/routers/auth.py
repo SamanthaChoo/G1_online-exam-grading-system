@@ -819,12 +819,12 @@ def profile_update(
     
     name_clean = name.strip()
     email_clean = email.strip().lower()
-    phone_clean = phone.strip() if phone else None
-    title_clean = title.strip() if title else None
-    staff_id_clean = staff_id.strip() if staff_id else None
-    program_clean = program.strip() if program else None
+    phone_clean = phone.strip() if phone and phone.strip() else None
+    title_clean = title.strip() if title and title.strip() else None
+    staff_id_clean = staff_id.strip() if staff_id and staff_id.strip() else None
+    program_clean = program.strip() if program and program.strip() else None
     year_of_study_int = None
-    phone_number_clean = phone_number.strip() if phone_number else None
+    phone_number_clean = phone_number.strip() if phone_number and phone_number.strip() else None
     
     # Name validation
     if not name_clean:
@@ -930,10 +930,10 @@ def profile_update(
     
     # Update lecturer-specific fields
     if current_user.role == "lecturer":
-        if hasattr(current_user, "title"):
-            current_user.title = title_clean
-        if hasattr(current_user, "staff_id"):
-            current_user.staff_id = staff_id_clean
+        if hasattr(current_user, "title") and title_clean is not None:
+            current_user.title = title_clean if title_clean else None
+        if hasattr(current_user, "staff_id") and staff_id_clean is not None:
+            current_user.staff_id = staff_id_clean if staff_id_clean else None
     
     session.add(current_user)
     
