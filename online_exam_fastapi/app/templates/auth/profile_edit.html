@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h4 mb-0">Edit Profile</h1>
+            <a href="/auth/profile" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-left me-1"></i>Back to Profile
+            </a>
+          </div>
+
+          {% if errors %}
+          <div class="alert alert-danger" role="alert">
+            <ul class="mb-0">
+              {% for field, message in errors.items() %}
+              <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          <form method="post" novalidate>
+            <h5 class="text-muted mb-3">Account Information</h5>
+            
+            <div class="mb-3">
+              <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+              <input
+                type="text"
+                class="form-control {% if errors.name %}is-invalid{% endif %}"
+                id="name"
+                name="name"
+                value="{{ form.name }}"
+                required
+              >
+              {% if errors.name %}
+              <div class="invalid-feedback d-block">{{ errors.name }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+              <input
+                type="email"
+                class="form-control {% if errors.email %}is-invalid{% endif %}"
+                id="email"
+                name="email"
+                value="{{ form.email }}"
+                required
+              >
+              {% if errors.email %}
+              <div class="invalid-feedback d-block">{{ errors.email }}</div>
+              {% endif %}
+              <div class="invalid-feedback" id="email-error" style="display: none;"></div>
+            </div>
+
+            {% if current_user.role == "lecturer" %}
+            <div class="mb-3">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input
+                type="tel"
+                class="form-control {% if errors.phone %}is-invalid{% endif %}"
+                id="phone"
+                name="phone"
+                value="{{ form.phone }}"
+                placeholder="e.g., +60123456789"
+              >
+              {% if errors.phone %}
+              <div class="invalid-feedback d-block">{{ errors.phone }}</div>
+              {% endif %}
+              <div class="invalid-feedback" id="phone-error" style="display: none;"></div>
+            </div>
+
+            <div class="mb-3">
+              <label for="title" class="form-label">Title</label>
+              <select
+                class="form-select {% if errors.title %}is-invalid{% endif %}"
+                id="title"
+                name="title"
+              >
+                <option value="">Select title...</option>
+                <option value="Dr." {% if form.title == "Dr." %}selected{% endif %}>Dr.</option>
+                <option value="Prof." {% if form.title == "Prof." %}selected{% endif %}>Prof.</option>
+                <option value="Assoc. Prof." {% if form.title == "Assoc. Prof." %}selected{% endif %}>Assoc. Prof.</option>
+                <option value="Mr." {% if form.title == "Mr." %}selected{% endif %}>Mr.</option>
+                <option value="Ms." {% if form.title == "Ms." %}selected{% endif %}>Ms.</option>
+                <option value="Mrs." {% if form.title == "Mrs." %}selected{% endif %}>Mrs.</option>
+                <option value="Ir." {% if form.title == "Ir." %}selected{% endif %}>Ir.</option>
+                <option value="Ts." {% if form.title == "Ts." %}selected{% endif %}>Ts.</option>
+              </select>
+              {% if errors.title %}
+              <div class="invalid-feedback d-block">{{ errors.title }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="staff_id" class="form-label">Staff ID</label>
+              <input
+                type="text"
+                class="form-control {% if errors.staff_id %}is-invalid{% endif %}"
+                id="staff_id"
+                name="staff_id"
+                value="{{ form.staff_id }}"
+                placeholder="e.g., STAFF001"
+              >
+              {% if errors.staff_id %}
+              <div class="invalid-feedback d-block">{{ errors.staff_id }}</div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            {% if current_user.role == "student" and student %}
+            <hr class="my-4">
+            <h5 class="text-muted mb-3">Student Information</h5>
+            
+            <div class="mb-3">
+              <label for="matric_no" class="form-label">Student ID / Matric Number</label>
+              <input
+                type="text"
+                class="form-control"
+                id="matric_no"
+                name="matric_no"
+                value="{{ form.matric_no }}"
+                disabled
+              >
+              <small class="form-text text-muted">Student ID cannot be changed. Contact administrator if needed.</small>
+            </div>
+
+            <div class="mb-3">
+              <label for="program" class="form-label">Program</label>
+              <input
+                type="text"
+                class="form-control {% if errors.program %}is-invalid{% endif %}"
+                id="program"
+                name="program"
+                value="{{ form.program }}"
+                placeholder="e.g., SWE, BIM"
+              >
+              {% if errors.program %}
+              <div class="invalid-feedback d-block">{{ errors.program }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="year_of_study" class="form-label">Year of Study</label>
+              <select
+                class="form-select {% if errors.year_of_study %}is-invalid{% endif %}"
+                id="year_of_study"
+                name="year_of_study"
+              >
+                <option value="">Select year...</option>
+                {% for i in range(1, 11) %}
+                <option value="{{ i }}" {% if form.year_of_study and form.year_of_study|int == i %}selected{% endif %}>{{ i }}</option>
+                {% endfor %}
+              </select>
+              {% if errors.year_of_study %}
+              <div class="invalid-feedback d-block">{{ errors.year_of_study }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="phone_number" class="form-label">Phone Number</label>
+              <input
+                type="tel"
+                class="form-control {% if errors.phone_number %}is-invalid{% endif %}"
+                id="phone_number"
+                name="phone_number"
+                value="{{ form.phone_number }}"
+                placeholder="e.g., +60123456789"
+              >
+              {% if errors.phone_number %}
+              <div class="invalid-feedback d-block">{{ errors.phone_number }}</div>
+              {% endif %}
+              <div class="invalid-feedback" id="phone_number-error" style="display: none;"></div>
+            </div>
+            {% endif %}
+
+            {% if current_user.role == "admin" %}
+            <div class="mb-3">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input
+                type="tel"
+                class="form-control {% if errors.phone %}is-invalid{% endif %}"
+                id="phone"
+                name="phone"
+                value="{{ form.phone }}"
+                placeholder="e.g., +60123456789"
+              >
+              {% if errors.phone %}
+              <div class="invalid-feedback d-block">{{ errors.phone }}</div>
+              {% endif %}
+              <div class="invalid-feedback" id="phone-error" style="display: none;"></div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2 mt-4">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Save Changes
+              </button>
+              <a href="/auth/profile" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phone');
+    const phoneNumberInput = document.getElementById('phone_number');
+    const form = document.querySelector('form');
+
+    // Valid TLDs list (matching backend validation)
+    const validTLDs = new Set([
+      // Generic TLDs
+      'com', 'org', 'net', 'edu', 'gov', 'mil', 'int',
+      // Country code TLDs
+      'uk', 'us', 'ca', 'au', 'de', 'fr', 'it', 'es', 'nl', 'be', 'ch', 'at', 'se', 'no', 'dk', 'fi',
+      'pl', 'cz', 'ie', 'pt', 'gr', 'ro', 'hu', 'bg', 'hr', 'sk', 'si', 'lt', 'lv', 'ee',
+      'jp', 'cn', 'kr', 'in', 'sg', 'my', 'th', 'ph', 'id', 'vn', 'tw', 'hk', 'mo',
+      'nz', 'za', 'br', 'mx', 'ar', 'cl', 'co', 'pe', 've', 'ec', 'uy', 'py', 'bo',
+      'ae', 'sa', 'il', 'tr', 'eg', 'ma', 'dz', 'tn', 'jo', 'lb', 'kw', 'qa', 'bh', 'om',
+      'ru', 'ua', 'kz', 'by', 'ge', 'am', 'az',
+      // New gTLDs
+      'io', 'ai', 'app', 'dev', 'tech', 'online', 'site', 'website', 'store', 'shop',
+      'blog', 'info', 'biz', 'name', 'pro', 'xyz', 'me', 'tv', 'cc', 'ws', 'mobi',
+      // Academic/Educational
+      'ac', 'sch',
+      // Other common ones
+      'asia', 'tel', 'jobs', 'travel', 'museum', 'aero', 'coop'
+    ]);
+
+    // Email validation with TLD checking
+    function validateEmail() {
+      if (!emailInput) return;
+      
+      const emailError = document.getElementById('email-error');
+      const value = emailInput.value.trim().toLowerCase();
+      
+      if (!value) {
+        emailInput.classList.remove('is-invalid', 'is-valid');
+        emailInput.setCustomValidity('');
+        if (emailError) {
+          emailError.style.display = 'none';
+          emailError.textContent = '';
+        }
+        return;
+      }
+
+      // Basic email format regex
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      
+      if (!emailRegex.test(value)) {
+        emailInput.classList.remove('is-valid');
+        emailInput.classList.add('is-invalid');
+        emailInput.setCustomValidity('Please enter a valid email address format.');
+        if (emailError) {
+          emailError.textContent = 'Please enter a valid email address format.';
+          emailError.style.display = 'block';
+        }
+        return;
+      }
+
+      try {
+        const parts = value.split('@');
+        if (parts.length !== 2) {
+          emailInput.classList.remove('is-valid');
+          emailInput.classList.add('is-invalid');
+          emailInput.setCustomValidity('Invalid email address format.');
+          if (emailError) {
+            emailError.textContent = 'Invalid email address format.';
+            emailError.style.display = 'block';
+          }
+          return;
+        }
+
+        const domain = parts[1];
+        const domainParts = domain.split('.');
+        if (domainParts.length < 2) {
+          emailInput.classList.remove('is-valid');
+          emailInput.classList.add('is-invalid');
+          emailInput.setCustomValidity('Invalid email address format.');
+          if (emailError) {
+            emailError.textContent = 'Invalid email address format.';
+            emailError.style.display = 'block';
+          }
+          return;
+        }
+
+        const tld = domainParts[domainParts.length - 1].toLowerCase();
+        
+        if (!tld || tld.length < 2) {
+          emailInput.classList.remove('is-valid');
+          emailInput.classList.add('is-invalid');
+          emailInput.setCustomValidity('Email address must have a valid top-level domain (e.g., .com, .edu).');
+          if (emailError) {
+            emailError.textContent = 'Email address must have a valid top-level domain (e.g., .com, .edu).';
+            emailError.style.display = 'block';
+          }
+          return;
+        }
+
+        // Check if TLD contains only letters
+        if (!/^[a-zA-Z]+$/.test(tld)) {
+          emailInput.classList.remove('is-valid');
+          emailInput.classList.add('is-invalid');
+          emailInput.setCustomValidity('Email address must have a valid top-level domain (e.g., .com, .edu).');
+          if (emailError) {
+            emailError.textContent = 'Email address must have a valid top-level domain (e.g., .com, .edu).';
+            emailError.style.display = 'block';
+          }
+          return;
+        }
+
+        if (!validTLDs.has(tld)) {
+          emailInput.classList.remove('is-valid');
+          emailInput.classList.add('is-invalid');
+          const errorMsg = `Email address must use a valid top-level domain (e.g., .com, .edu, .org). '.${tld}' is not recognized as a valid domain.`;
+          emailInput.setCustomValidity(errorMsg);
+          if (emailError) {
+            emailError.textContent = errorMsg;
+            emailError.style.display = 'block';
+          }
+          return;
+        }
+
+        emailInput.classList.remove('is-invalid');
+        emailInput.classList.add('is-valid');
+        emailInput.setCustomValidity('');
+        if (emailError) {
+          emailError.style.display = 'none';
+          emailError.textContent = '';
+        }
+      } catch (e) {
+        emailInput.classList.remove('is-valid');
+        emailInput.classList.add('is-invalid');
+        emailInput.setCustomValidity('Please enter a valid email address.');
+        if (emailError) {
+          emailError.textContent = 'Please enter a valid email address.';
+          emailError.style.display = 'block';
+        }
+      }
+    }
+
+    // Phone number validation
+    function validatePhone(inputElement) {
+      if (!inputElement) return;
+      
+      const value = inputElement.value.trim();
+      const errorId = inputElement.id === 'phone' ? 'phone-error' : 'phone_number-error';
+      const phoneError = document.getElementById(errorId);
+      
+      if (!value) {
+        inputElement.classList.remove('is-invalid', 'is-valid');
+        inputElement.setCustomValidity('');
+        if (phoneError) {
+          phoneError.style.display = 'none';
+          phoneError.textContent = '';
+        }
+        return;
+      }
+
+      // Extract digits only
+      const phoneDigits = value.replace(/\D/g, '');
+      
+      // Check if contains any digits
+      if (!phoneDigits) {
+        inputElement.classList.remove('is-valid');
+        inputElement.classList.add('is-invalid');
+        inputElement.setCustomValidity('Phone number must contain at least some digits.');
+        if (phoneError) {
+          phoneError.textContent = 'Phone number must contain at least some digits.';
+          phoneError.style.display = 'block';
+        }
+        return;
+      }
+
+      // Check digit count
+      if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+        inputElement.classList.remove('is-valid');
+        inputElement.classList.add('is-invalid');
+        inputElement.setCustomValidity('Please enter a valid phone number (7-15 digits).');
+        if (phoneError) {
+          phoneError.textContent = 'Please enter a valid phone number (7-15 digits).';
+          phoneError.style.display = 'block';
+        }
+        return;
+      }
+
+      // Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
+      if (!/^[\d\s+\-()]+$/.test(value)) {
+        inputElement.classList.remove('is-valid');
+        inputElement.classList.add('is-invalid');
+        inputElement.setCustomValidity('Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed.');
+        if (phoneError) {
+          phoneError.textContent = 'Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed.';
+          phoneError.style.display = 'block';
+        }
+        return;
+      }
+
+      inputElement.classList.remove('is-invalid');
+      inputElement.classList.add('is-valid');
+      inputElement.setCustomValidity('');
+      if (phoneError) {
+        phoneError.style.display = 'none';
+        phoneError.textContent = '';
+      }
+    }
+
+    // Attach event listeners
+    if (emailInput) {
+      emailInput.addEventListener('blur', validateEmail);
+      emailInput.addEventListener('input', function() {
+        if (emailInput.classList.contains('is-invalid') || emailInput.classList.contains('is-valid')) {
+          validateEmail();
+        }
+      });
+    }
+
+    if (phoneInput) {
+      phoneInput.addEventListener('blur', function() { validatePhone(phoneInput); });
+      phoneInput.addEventListener('input', function() {
+        if (phoneInput.classList.contains('is-invalid') || phoneInput.classList.contains('is-valid')) {
+          validatePhone(phoneInput);
+        }
+      });
+    }
+
+    if (phoneNumberInput) {
+      phoneNumberInput.addEventListener('blur', function() { validatePhone(phoneNumberInput); });
+      phoneNumberInput.addEventListener('input', function() {
+        if (phoneNumberInput.classList.contains('is-invalid') || phoneNumberInput.classList.contains('is-valid')) {
+          validatePhone(phoneNumberInput);
+        }
+      });
+    }
+
+    // Form submission validation
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        if (emailInput) validateEmail();
+        if (phoneInput) validatePhone(phoneInput);
+        if (phoneNumberInput) validatePhone(phoneNumberInput);
+
+        const hasErrors = form.querySelectorAll('.is-invalid').length > 0;
+        if (hasErrors) {
+          e.preventDefault();
+          return false;
+        }
+      });
+    }
+
+    // Initialize validation for fields with server-side errors or existing values
+    if (emailInput && (emailInput.value.trim() || emailInput.classList.contains('is-invalid'))) {
+      validateEmail();
+    }
+    if (phoneInput && (phoneInput.value.trim() || phoneInput.classList.contains('is-invalid'))) {
+      validatePhone(phoneInput);
+    }
+    if (phoneNumberInput && (phoneNumberInput.value.trim() || phoneNumberInput.classList.contains('is-invalid'))) {
+      validatePhone(phoneNumberInput);
+    }
+  });
+</script>
+{% endblock %}

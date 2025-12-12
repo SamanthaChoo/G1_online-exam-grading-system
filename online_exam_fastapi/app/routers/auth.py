@@ -5,7 +5,7 @@ from typing import Optional
 
 from app.auth_utils import create_reset_token, generate_otp, hash_password, verify_password
 from app.database import get_session
-from app.deps import get_current_user
+from app.deps import get_current_user, require_login
 from app.email_utils import send_otp_email
 from app.email_validator import validate_email_format
 from app.models import PasswordResetOTP, PasswordResetToken, Student, User
@@ -737,3 +737,291 @@ def reset_password(
     request.session.pop("reset_email", None)
 
     return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ===================== PROFILE MANAGEMENT =====================
+
+
+@router.get("/profile")
+def profile_view(
+    request: Request,
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    """View user profile."""
+    # Load student data if user is a student
+    student = None
+    if current_user.role == "student" and current_user.student_id:
+        student = session.get(Student, current_user.student_id)
+    
+    context = {
+        "request": request,
+        "current_user": current_user,
+        "student": student,
+    }
+    return templates.TemplateResponse("auth/profile.html", context)
+
+
+@router.get("/profile/edit")
+def profile_edit_form(
+    request: Request,
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    """Show profile edit form."""
+    # Load student data if user is a student
+    student = None
+    if current_user.role == "student" and current_user.student_id:
+        student = session.get(Student, current_user.student_id)
+    
+    form = {
+        "name": current_user.name,
+        "email": current_user.email,
+        "phone": getattr(current_user, "phone", None) or "",
+    }
+    
+    # Add role-specific fields
+    if current_user.role == "lecturer":
+        form["title"] = getattr(current_user, "title", None) or ""
+        form["staff_id"] = getattr(current_user, "staff_id", None) or ""
+    elif current_user.role == "student" and student:
+        form["matric_no"] = student.matric_no
+        form["program"] = student.program or ""
+        form["year_of_study"] = str(student.year_of_study) if student.year_of_study else ""
+        form["phone_number"] = student.phone_number or ""
+    
+    context = {
+        "request": request,
+        "current_user": current_user,
+        "student": student,
+        "form": form,
+        "errors": {},
+    }
+    return templates.TemplateResponse("auth/profile_edit.html", context)
+
+
+@router.post("/profile/edit")
+def profile_update(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(None),
+    title: str = Form(None),
+    staff_id: str = Form(None),
+    program: str = Form(None),
+    year_of_study: str = Form(None),
+    phone_number: str = Form(None),
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    """Update user profile."""
+    errors: dict[str, str] = {}
+    
+    name_clean = name.strip()
+    email_clean = email.strip().lower()
+    phone_clean = phone.strip() if phone and phone.strip() else None
+    title_clean = title.strip() if title and title.strip() else None
+    staff_id_clean = staff_id.strip() if staff_id and staff_id.strip() else None
+    program_clean = program.strip() if program and program.strip() else None
+    year_of_study_int = None
+    phone_number_clean = phone_number.strip() if phone_number and phone_number.strip() else None
+    
+    # Name validation
+    if not name_clean:
+        errors["name"] = "Name is required."
+    elif len(name_clean) < 2:
+        errors["name"] = "Name must be at least 2 characters long."
+    elif len(name_clean) > 100:
+        errors["name"] = "Name must not exceed 100 characters."
+    
+    # Email validation with TLD checking
+    email_error = validate_email_format(email_clean)
+    if email_error:
+        errors["email"] = email_error
+    
+    # Check for duplicate email on other users
+    if "email" not in errors:
+        existing = session.exec(select(User).where(User.email == email_clean, User.id != current_user.id)).first()
+        if existing:
+            errors["email"] = "This email is already registered by another user."
+    
+    # Phone validation - must contain digits and follow proper pattern
+    if phone_clean:
+        phone_digits = "".join(filter(str.isdigit, phone_clean))
+        if not phone_digits:
+            errors["phone"] = "Phone number must contain at least some digits."
+        elif len(phone_digits) < 7 or len(phone_digits) > 15:
+            errors["phone"] = "Please enter a valid phone number (7-15 digits)."
+        # Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
+        elif not all(c.isdigit() or c in " +-()" for c in phone_clean):
+            errors["phone"] = "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
+    
+    # Lecturer-specific validation
+    if current_user.role == "lecturer":
+        if title_clean and title_clean not in [
+            "", "Dr.", "Prof.", "Assoc. Prof.", "Mr.", "Ms.", "Mrs.", "Ir.", "Ts.",
+        ]:
+            errors["title"] = "Please select a valid title."
+        
+        if staff_id_clean:
+            # Check for duplicate staff_id on other users
+            existing_staff = session.exec(
+                select(User).where(User.staff_id == staff_id_clean, User.id != current_user.id)
+            ).first()
+            if existing_staff:
+                errors["staff_id"] = "This Staff ID is already in use by another user."
+    
+    # Student-specific validation
+    student = None
+    if current_user.role == "student":
+        if current_user.student_id:
+            student = session.get(Student, current_user.student_id)
+        
+        if program_clean and len(program_clean) > 50:
+            errors["program"] = "Program name must not exceed 50 characters."
+        
+        if year_of_study:
+            try:
+                year_of_study_int = int(year_of_study)
+                if year_of_study_int < 1 or year_of_study_int > 10:
+                    errors["year_of_study"] = "Year of study must be between 1 and 10."
+            except ValueError:
+                errors["year_of_study"] = "Please enter a valid year of study."
+        
+        if phone_number_clean:
+            phone_digits = "".join(filter(str.isdigit, phone_number_clean))
+            if not phone_digits:
+                errors["phone_number"] = "Phone number must contain at least some digits."
+            elif len(phone_digits) < 7 or len(phone_digits) > 15:
+                errors["phone_number"] = "Please enter a valid phone number (7-15 digits)."
+            # Check for invalid characters (only allow digits, spaces, hyphens, parentheses, plus sign)
+            elif not all(c.isdigit() or c in " +-()" for c in phone_number_clean):
+                errors["phone_number"] = "Phone number contains invalid characters. Only digits, spaces, hyphens, parentheses, and + are allowed."
+    
+    if errors:
+        form = {
+            "name": name,
+            "email": email,
+            "phone": phone or "",
+            "title": title or "",
+            "staff_id": staff_id or "",
+            "program": program or "",
+            "year_of_study": year_of_study or "",
+            "phone_number": phone_number or "",
+        }
+        context = {
+            "request": request,
+            "current_user": current_user,
+            "student": student,
+            "form": form,
+            "errors": errors,
+        }
+        return templates.TemplateResponse(
+            "auth/profile_edit.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Update user fields
+    current_user.name = name_clean
+    current_user.email = email_clean
+    if hasattr(current_user, "phone"):
+        current_user.phone = phone_clean
+    
+    # Update lecturer-specific fields
+    if current_user.role == "lecturer":
+        if hasattr(current_user, "title") and title_clean is not None:
+            current_user.title = title_clean if title_clean else None
+        if hasattr(current_user, "staff_id") and staff_id_clean is not None:
+            current_user.staff_id = staff_id_clean if staff_id_clean else None
+    
+    session.add(current_user)
+    
+    # Update student record if applicable
+    if current_user.role == "student" and student:
+        student.name = name_clean
+        student.email = email_clean
+        if program_clean:
+            student.program = program_clean
+        if year_of_study_int:
+            student.year_of_study = year_of_study_int
+        if phone_number_clean:
+            student.phone_number = phone_number_clean
+        session.add(student)
+    
+    session.commit()
+    
+    return RedirectResponse(url="/auth/profile", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/profile/change-password")
+def change_password_form(request: Request, current_user: User = Depends(require_login)):
+    """Show change password form."""
+    context = {
+        "request": request,
+        "current_user": current_user,
+        "errors": {},
+    }
+    return templates.TemplateResponse("auth/change_password.html", context)
+
+
+@router.post("/profile/change-password")
+def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    """Change user password."""
+    errors: dict[str, str] = {}
+    
+    # Verify current password
+    if not verify_password(current_password, current_user.password_hash):
+        errors["current_password"] = "Current password is incorrect."
+    
+    # New password validation
+    if not new_password:
+        errors["new_password"] = "New password is required."
+    elif len(new_password) < 8:
+        errors["new_password"] = "Password must be at least 8 characters long."
+    elif len(new_password) > 128:
+        errors["new_password"] = "Password must not exceed 128 characters."
+    elif not any(c.isupper() for c in new_password):
+        errors["new_password"] = "Password must contain at least one uppercase letter."
+    elif not any(c.islower() for c in new_password):
+        errors["new_password"] = "Password must contain at least one lowercase letter."
+    elif not any(c.isdigit() for c in new_password):
+        errors["new_password"] = "Password must contain at least one number."
+    elif not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in new_password):
+        errors["new_password"] = "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?/~`)."
+    
+    # Check if new password is same as current
+    if not errors.get("new_password") and verify_password(new_password, current_user.password_hash):
+        errors["new_password"] = "New password must be different from your current password."
+    
+    # Confirm password validation
+    if not confirm_password:
+        errors["confirm_password"] = "Please confirm your new password."
+    elif new_password != confirm_password:
+        errors["confirm_password"] = "Passwords do not match."
+    
+    if errors:
+        context = {
+            "request": request,
+            "current_user": current_user,
+            "errors": errors,
+        }
+        return templates.TemplateResponse(
+            "auth/change_password.html",
+            context,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Update password
+    current_user.password_hash = hash_password(new_password)
+    session.add(current_user)
+    session.commit()
+    
+    return RedirectResponse(url="/auth/profile?password_changed=1", status_code=status.HTTP_303_SEE_OTHER)

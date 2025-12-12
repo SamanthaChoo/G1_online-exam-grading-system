@@ -154,13 +154,6 @@ def client():
     # Cleanup
     loop.run_until_complete(async_client.aclose())
     app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def session():
-    """Provide a database session for tests."""
-    with Session(test_engine) as session:
-        yield session
 # ============================================================================
 # ENTITY FIXTURES
 # ============================================================================
