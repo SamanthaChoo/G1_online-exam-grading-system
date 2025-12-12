@@ -126,7 +126,6 @@
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
               {% if current_user.role == "student" %}
               <li><a class="dropdown-item" href="/courses/student">My Courses</a></li>
-              <li><a class="dropdown-item" href="/grades">View Grades</a></li>
               {% elif current_user.role == "lecturer" or current_user.role == "admin" %}
               <li><a class="dropdown-item" href="/courses/">My Courses</a></li>
               {% if current_user.role == "lecturer" %}
