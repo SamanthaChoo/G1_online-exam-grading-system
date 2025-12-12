@@ -8,6 +8,7 @@ from app.deps import get_current_user, require_role
 from app.models import (
     Course,
     Exam,
+    ExamQuestion,
     User,
     Student,
     Enrollment,
@@ -214,35 +215,101 @@ def join_exam(
     session: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user),
 ):
+    from datetime import datetime
+    from app.models import ExamAttempt
+    
     exam = session.get(Exam, exam_id)
     student = session.get(Student, student_id)
 
-    # Enforce single attempt: if result already exists, redirect to finished page.
+    # Enforce single attempt: if MCQ result already exists, redirect to finished page.
     if student and exam and _has_mcq_result(session, exam_id, student_id):
+        return RedirectResponse(
+            url="/exams/exam_finished",
+            status_code=http_status.HTTP_303_SEE_OTHER,
+        )
+    
+    # Check if student has already submitted essay attempt (status = submitted or is_final = 1)
+    essay_attempt = session.exec(
+        select(ExamAttempt).where(
+            ExamAttempt.exam_id == exam_id,
+            ExamAttempt.student_id == student_id,
+            ExamAttempt.is_final == 1,
+        )
+    ).first()
+    if essay_attempt:
         return RedirectResponse(
             url="/exams/exam_finished",
             status_code=http_status.HTTP_303_SEE_OTHER,
         )
 
     # Get MCQ questions
-    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
-    # Get any existing answers
-    answers = session.exec(
+    mcq_questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
+    # Get essay questions
+    essay_questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
+    
+    # Get any existing MCQ answers
+    mcq_answers = session.exec(
         select(MCQAnswer).where(
             MCQAnswer.exam_id == exam_id,
             MCQAnswer.student_id == student_id,
         )
     ).all()
-    answer_map = {a.question_id: a.selected_option for a in answers}
+    mcq_answer_map = {a.question_id: a.selected_option for a in mcq_answers}
+    
+    # Determine if we should auto-grade: only if there are ONLY MCQ questions (no essay)
+    has_only_mcq = len(mcq_questions) > 0 and len(essay_questions) == 0
+    
+    # Calculate time left in milliseconds based on exam end_time
+    time_left_ms = None
+    if exam and exam.end_time:
+        now = datetime.utcnow()
+        time_diff = exam.end_time - now
+        time_left_ms = int(time_diff.total_seconds() * 1000)
+        # If time is already up, redirect to finished
+        if time_left_ms <= 0:
+            return RedirectResponse(
+                url="/exams/exam_finished",
+                status_code=http_status.HTTP_303_SEE_OTHER,
+            )
+    
     context = {
         "request": request,
         "exam": exam,
         "student": student,
-        "questions": questions,
-        "answer_map": answer_map,
+        "mcq_questions": mcq_questions,
+        "essay_questions": essay_questions,
+        "answer_map": mcq_answer_map,
+        "has_only_mcq": has_only_mcq,
         "current_user": current_user,
+        "exam_end_time": exam.end_time.isoformat() if exam and exam.end_time else None,
     }
     return templates.TemplateResponse("exams/join_exam.html", context)
+
+
+@router.post("/{exam_id}/submit-essay")
+async def submit_essay_attempt(exam_id: int, request: Request, session: Session = Depends(get_session)):
+    """Mark an essay attempt as submitted/final."""
+    from app.models import ExamAttempt
+    
+    data = await request.json()
+    student_id = data.get("student_id")
+    
+    # Get the essay attempt
+    attempt = session.exec(
+        select(ExamAttempt).where(
+            ExamAttempt.exam_id == exam_id,
+            ExamAttempt.student_id == student_id,
+        )
+    ).first()
+    
+    if attempt:
+        attempt.status = "submitted"
+        attempt.is_final = 1
+        attempt.submitted_at = datetime.utcnow()
+        session.add(attempt)
+        session.commit()
+    
+    return {"status": "success"}
 
 
 @router.post("/{exam_id}/log-activity")
@@ -299,10 +366,15 @@ async def log_exam_activity(exam_id: int, request: Request, session: Session = D
 
 @router.post("/{exam_id}/autosave")
 async def autosave_answers(exam_id: int, request: Request, session: Session = Depends(get_session)):
+    from app.models import ExamAttempt, EssayAnswer
+    
     data = await request.json()
     student_id = data.get("student_id")
-    answers = data.get("answers", {})
-    for qid, selected in answers.items():
+    mcq_answers = data.get("answers", {})
+    essay_answers = data.get("essay_answers", {})
+    
+    # Save MCQ answers
+    for qid, selected in mcq_answers.items():
         qid = int(qid)
         answer = session.exec(
             select(MCQAnswer).where(
@@ -324,6 +396,50 @@ async def autosave_answers(exam_id: int, request: Request, session: Session = De
                     selected_option=selected,
                 )
             )
+    
+    # Save essay answers
+    if essay_answers:
+        # Get or create essay attempt for this student
+        attempt = session.exec(
+            select(ExamAttempt).where(
+                ExamAttempt.exam_id == exam_id,
+                ExamAttempt.student_id == student_id,
+            )
+        ).first()
+        
+        if not attempt:
+            attempt = ExamAttempt(
+                exam_id=exam_id,
+                student_id=student_id,
+                started_at=datetime.utcnow(),
+                status="in_progress",
+                is_final=0,
+            )
+            session.add(attempt)
+            session.flush()
+        
+        # Save each essay answer
+        for qid_str, answer_text in essay_answers.items():
+            qid = int(qid_str)
+            essay_answer = session.exec(
+                select(EssayAnswer).where(
+                    EssayAnswer.attempt_id == attempt.id,
+                    EssayAnswer.question_id == qid,
+                )
+            ).first()
+            
+            if essay_answer:
+                essay_answer.answer_text = answer_text
+                session.add(essay_answer)
+            else:
+                session.add(
+                    EssayAnswer(
+                        attempt_id=attempt.id,
+                        question_id=qid,
+                        answer_text=answer_text,
+                    )
+                )
+    
     session.commit()
     return {"status": "success"}
 

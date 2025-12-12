@@ -173,7 +173,7 @@ class TestStudentResultsPositive:
         session.commit()
         session.refresh(student_user)
         
-        student = Student(id=student_user.id, name="Test Student", matric_no=f"A{uid}", email=student_user.email)
+        student = Student(user_id=student_user.id, name="Test Student", matric_no=f"A{uid}", email=student_user.email)
         session.add(student)
         session.commit()
 

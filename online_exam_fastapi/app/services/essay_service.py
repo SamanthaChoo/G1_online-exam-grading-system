@@ -32,8 +32,8 @@ def add_question(session: Session, exam_id: int, question_text: str, max_marks: 
     # Validate max_marks is positive
     if max_marks < 1:
         raise ValueError("max_marks must be at least 1")
-    if max_marks > 1000:
-        raise ValueError("max_marks cannot exceed 1000")
+    if max_marks > 100:
+        raise ValueError("max_marks cannot exceed 100")
 
     q = ExamQuestion(exam_id=exam_id, question_text=sanitized_text, max_marks=max_marks)
     session.add(q)
@@ -81,8 +81,8 @@ def edit_question(
     if max_marks is not None:
         if max_marks < 1:
             raise ValueError("max_marks must be at least 1")
-        if max_marks > 1000:
-            raise ValueError("max_marks cannot exceed 1000")
+        if max_marks > 100:
+            raise ValueError("max_marks cannot exceed 100")
         question.max_marks = max_marks
 
     session.add(question)
@@ -105,13 +105,7 @@ def delete_question(session: Session, question_id: int) -> None:
     if not question:
         raise ValueError(f"Question with id={question_id} does not exist")
 
-    # Delete all associated answers first (cascade)
-    stmt = select(EssayAnswer).where(EssayAnswer.question_id == question_id)
-    answers = session.exec(stmt).all()
-    for answer in answers:
-        session.delete(answer)
-
-    # Delete the question
+    # Delete the question (answers should cascade delete due to foreign key)
     session.delete(question)
     session.commit()
 

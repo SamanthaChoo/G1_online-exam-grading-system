@@ -25,6 +25,21 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.deps import require_login, get_current_user
 
+
+def _exam_has_answers(session: Session, exam_id: int) -> bool:
+    """Check if an exam has any essay answers linked to its questions."""
+    questions = session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
+    for question in questions:
+        answer = session.exec(
+            select(EssayAnswer).where(EssayAnswer.question_id == question.id)
+        ).first()
+        if answer:
+            return True
+    return False
+
+
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
@@ -48,10 +63,11 @@ def essay_index(
 
 
 @router.get("/essay/{exam_id}/questions")
-def essay_questions(exam_id: int, request: Request, session: Session = Depends(get_session)):
+def essay_questions(exam_id: int, request: Request, session: Session = Depends(get_session), current_user: User | None = Depends(get_current_user)):
     exam = session.get(Exam, exam_id)
     qs = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
-    return templates.TemplateResponse("essay/questions.html", {"request": request, "exam": exam, "questions": qs})
+    error = request.query_params.get("error")
+    return templates.TemplateResponse("essay/questions.html", {"request": request, "exam": exam, "questions": qs, "error": error, "current_user": current_user})
 
 
 @router.get("/essay/questions/select")
@@ -144,6 +160,19 @@ def edit_question_form(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
     
+    # Check if exam has any answers - prevent editing if it does
+    if _exam_has_answers(session, exam_id):
+        return templates.TemplateResponse(
+            "essay/edit_question.html",
+            {
+                "request": request,
+                "exam": exam,
+                "question": question,
+                "error": "Cannot edit questions after students have submitted answers.",
+                "current_user": current_user,
+            },
+        )
+    
     # Students should not be able to edit questions
     if current_user and current_user.role == "student":
         return templates.TemplateResponse(
@@ -153,12 +182,13 @@ def edit_question_form(
                 "exam": exam,
                 "question": question,
                 "error": "Students are not allowed to edit questions.",
+                "current_user": current_user,
             },
         )
     
     return templates.TemplateResponse(
         "essay/edit_question.html",
-        {"request": request, "exam": exam, "question": question},
+        {"request": request, "exam": exam, "question": question, "current_user": current_user},
     )
 
 
@@ -170,6 +200,10 @@ def update_question(
     max_marks: int = Form(None),
     session: Session = Depends(get_session),
 ):
+    # Check if exam has any answers - prevent editing if it does
+    if _exam_has_answers(session, exam_id):
+        raise HTTPException(status_code=400, detail="Cannot edit questions after students have submitted answers.")
+    
     try:
         edit_question(session, question_id, question_text, max_marks)
     except ValueError as e:
@@ -186,12 +220,25 @@ def delete_question_ui(
 ):
     # Students should not be able to delete questions
     if current_user and current_user.role == "student":
-        raise HTTPException(status_code=403, detail="Students are not allowed to delete questions.")
+        return RedirectResponse(
+            url=f"/essay/{exam_id}/questions?error=Students+are+not+allowed+to+delete+questions.",
+            status_code=303
+        )
+    
+    # Check if exam has any answers - prevent deleting if it does
+    if _exam_has_answers(session, exam_id):
+        return RedirectResponse(
+            url=f"/essay/{exam_id}/questions?error=Cannot+delete+questions+after+students+have+submitted+answers.",
+            status_code=303
+        )
     
     try:
         delete_question(session, question_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return RedirectResponse(
+            url=f"/essay/{exam_id}/questions?error={str(e).replace(' ', '+')}",
+            status_code=303
+        )
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
 
 
@@ -250,28 +297,6 @@ def list_attempts(
             "exam": exam,
             "attempts_with_stats": attempts_with_stats,
             "current_user": current_user,
-        },
-    )
-
-
-@router.get("/essay/{exam_id}/start")
-def start_form(
-    exam_id: int,
-    request: Request,
-    session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
-    already: str | None = Query(None),
-    no_student: str | None = Query(None),
-):
-    exam = session.get(Exam, exam_id)
-    return templates.TemplateResponse(
-        "essay/start.html",
-        {
-            "request": request,
-            "exam": exam,
-            "current_user": current_user,
-            "already": already,
-            "no_student": no_student,
         },
     )
 
@@ -454,6 +479,7 @@ def grade_form(
     attempt_id: int,
     request: Request,
     session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_current_user),
 ):
     exam = session.get(Exam, exam_id)
     attempt = session.get(ExamAttempt, attempt_id)
@@ -467,6 +493,13 @@ def grade_form(
 
     # Check if all answers are graded (all have marks_awarded set)
     is_graded = all(a.marks_awarded is not None for a in answers) if answers else False
+    
+    # Calculate total marks
+    total_possible = sum(q.max_marks or 0 for q in questions)
+    total_current = sum(
+        (answers_map.get(q.id).marks_awarded or 0) if answers_map.get(q.id) else 0
+        for q in questions
+    )
 
     return templates.TemplateResponse(
         "essay/grade.html",
@@ -478,6 +511,9 @@ def grade_form(
             "answers_map": answers_map,
             "student": student,
             "is_graded": is_graded,
+            "current_user": current_user,
+            "total_possible": total_possible,
+            "total_current": total_current,
         },
     )
 

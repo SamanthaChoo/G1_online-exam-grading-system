@@ -10,7 +10,11 @@
     <div class="alert alert-warning" role="alert">
       <strong>Exam Security:</strong> Anti-cheating measures are active. Right-click, copy/paste, and developer tools are disabled.
     </div>
-    {% for q in questions %}
+    
+    <!-- MCQ Questions Section -->
+    {% if mcq_questions %}
+    <h3 class="mt-4 mb-3">Multiple Choice Questions</h3>
+    {% for q in mcq_questions %}
       <div class="card mb-3">
         <div class="card-header">
           Q{{ loop.index }}. {{ q.question_text }}
@@ -35,6 +39,27 @@
         </div>
       </div>
     {% endfor %}
+    {% endif %}
+    
+    <!-- Essay Questions Section -->
+    {% if essay_questions %}
+    <h3 class="mt-4 mb-3">Essay Questions</h3>
+    <div class="alert alert-info">
+      <strong>Note:</strong> Essay answers will be reviewed and graded manually by your instructor.
+    </div>
+    {% for q in essay_questions %}
+      <div class="card mb-3">
+        <div class="card-header">
+          Q{{ mcq_questions|length + loop.index }}. {{ q.question_text }}
+        </div>
+        <div class="card-body">
+          <textarea class="form-control" name="essay_{{ q.id }}" rows="6" placeholder="Enter your answer here..."></textarea>
+          <small class="form-text text-muted mt-2">Max marks: {{ q.max_marks }}</small>
+        </div>
+      </div>
+    {% endfor %}
+    {% endif %}
+    
     <button type="button" class="btn btn-primary" onclick="submitExam()">Submit Exam</button>
   </form>
 </div>
@@ -43,7 +68,9 @@
     "student_id": {{ student.id|tojson }},
     "exam_id": {{ exam.id|tojson }},
     "duration": {{ exam.duration_minutes|tojson }},
-    "question_ids": [{% for q in questions %}{{ q.id }}{% if not loop.last %}, {% endif %}{% endfor %}]
+    "exam_end_time": {{ exam_end_time|tojson }},
+    "question_ids": [{% for q in mcq_questions %}{{ q.id }}{% if not loop.last %}, {% endif %}{% endfor %}],
+    "has_only_mcq": {{ has_only_mcq|tojson }}
   }
 </script>
 <!-- Exam Context for Anti-Cheating Logging -->
@@ -60,9 +87,20 @@
 <script>
 // Timer and auto-save logic
 const mcqData = JSON.parse(document.getElementById('mcq-data').textContent);
-let duration = mcqData.duration * 60; // seconds
-let timeLeft = duration;
+let timeLeft = 0;
 const timeLeftEl = document.getElementById('timeLeft');
+
+// Calculate time left based on exam end time
+function calculateTimeLeft() {
+  if (mcqData.exam_end_time) {
+    const endTime = new Date(mcqData.exam_end_time);
+    const now = new Date();
+    timeLeft = Math.max(0, Math.floor((endTime - now) / 1000));
+  }
+}
+
+calculateTimeLeft();
+
 function updateTimer() {
   if (timeLeft > 0) {
     timeLeft--;
@@ -80,13 +118,23 @@ function autoSave() {
   const form = document.getElementById('mcqForm');
   const data = new FormData(form);
   let answers = {};
+  let essay_answers = {};
+  
   mcqData.question_ids.forEach(function(qid) {
     answers[qid] = data.get('q' + qid);
   });
+  
+  // Collect essay answers if they exist
+  const essayInputs = form.querySelectorAll('textarea[name^="essay_"]');
+  essayInputs.forEach(function(input) {
+    const qid = input.name.replace('essay_', '');
+    essay_answers[qid] = input.value;
+  });
+  
   fetch(`/exams/${mcqData.exam_id}/autosave`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ student_id: mcqData.student_id, answers })
+    body: JSON.stringify({ student_id: mcqData.student_id, answers, essay_answers })
   }).catch(err => {
     console.error('Auto-save failed:', err);
   });
@@ -99,16 +147,48 @@ function submitExam(auto=false) {
   const form = document.getElementById('mcqForm');
   const data = new FormData(form);
   let answers = {};
+  let essay_answers = {};
+  
   mcqData.question_ids.forEach(function(qid) {
     answers[qid] = data.get('q' + qid);
   });
-  fetch(`/exams/${mcqData.exam_id}/submit`, {
+  
+  // Collect essay answers if they exist
+  const essayInputs = form.querySelectorAll('textarea[name^="essay_"]');
+  essayInputs.forEach(function(input) {
+    const qid = input.name.replace('essay_', '');
+    essay_answers[qid] = input.value;
+  });
+  
+  // Save answers first via autosave
+  fetch(`/exams/${mcqData.exam_id}/autosave`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ student_id: mcqData.student_id, answers })
-  }).then(r => r.json()).then(res => {
-    // Redirect to exam_finished page with grade data
-    window.location.href = `/exams/exam_finished?score=${res.score}&total=${res.total}`;
+    body: JSON.stringify({ student_id: mcqData.student_id, answers, essay_answers })
+  }).then(r => {
+    // If there are MCQ questions, submit them for grading
+    if (mcqData.question_ids.length > 0) {
+      return fetch(`/exams/${mcqData.exam_id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: mcqData.student_id, answers })
+      });
+    }
+    return r;
+  }).then(r => {
+    // If there are essay answers, mark the attempt as final/submitted
+    if (Object.keys(essay_answers).length > 0) {
+      return fetch(`/exams/${mcqData.exam_id}/submit-essay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: mcqData.student_id })
+      });
+    }
+    return r;
+  }).then(r => {
+    // Show success message and redirect to finished page
+    alert('Exam submitted successfully! Your answers have been saved.');
+    window.location.href = `/exams/exam_finished`;
   }).catch(err => {
     console.error('Submit failed:', err);
     alert('Error submitting exam. Please try again.');
