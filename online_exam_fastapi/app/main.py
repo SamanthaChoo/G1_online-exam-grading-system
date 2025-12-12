@@ -18,17 +18,14 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.exceptions import RequestValidationError
 from sqlmodel import Session, select
 from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(title="Online Examination & Grading System")
 
 # Templates must be defined before exception handlers that use them
-from fastapi.templating import Jinja2Templates
-
 templates = Jinja2Templates(directory="app/templates")
-
-from fastapi.exceptions import RequestValidationError
 
 
 @app.exception_handler(RequestValidationError)
@@ -52,25 +49,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             field_path = error.get("loc", [])
             if field_path:
                 # Get the last element (field name) from the path
-                field_name = (
-                    field_path[-1]
-                    if isinstance(field_path[-1], str)
-                    else str(field_path[-1])
-                )
+                field_name = field_path[-1] if isinstance(field_path[-1], str) else str(field_path[-1])
                 error_type = error.get("type", "")
                 error_msg = error.get("msg", "Invalid input")
 
                 # Convert technical error messages to user-friendly ones
                 if error_type == "missing":
-                    display_name = field_name_mapping.get(
-                        field_name, field_name.replace("_", " ").title()
-                    )
+                    display_name = field_name_mapping.get(field_name, field_name.replace("_", " ").title())
                     errors_dict[field_name] = f"{display_name} is required."
                 else:
                     # Use the field name mapping for better display
-                    display_name = field_name_mapping.get(
-                        field_name, field_name.replace("_", " ").title()
-                    )
+                    display_name = field_name_mapping.get(field_name, field_name.replace("_", " ").title())
                     errors_dict[field_name] = f"{display_name}: {error_msg}"
 
         # Determine which form to show based on the URL
@@ -144,14 +133,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 403:
         accept_header = request.headers.get("accept", "")
         if "text/html" in accept_header or request.method == "GET":
-            return RedirectResponse(
-                url="/?error=access_denied", status_code=status.HTTP_303_SEE_OTHER
-            )
+            return RedirectResponse(url="/?error=access_denied", status_code=status.HTTP_303_SEE_OTHER)
     # For 303 redirects (like login redirects), let them pass through
     if exc.status_code == 303 and exc.headers.get("Location"):
-        return RedirectResponse(
-            url=exc.headers["Location"], status_code=status.HTTP_303_SEE_OTHER
-        )
+        return RedirectResponse(url=exc.headers["Location"], status_code=status.HTTP_303_SEE_OTHER)
     # For other cases or API requests, use default behavior
     from fastapi.responses import JSONResponse
 

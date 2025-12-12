@@ -13,9 +13,7 @@ EMAIL_ADDRESS = "wms.management00@gmail.com"
 EMAIL_PASSWORD = "qigc ghkx fjuu kefv"  # App Password
 
 
-def send_otp_email(
-    to_email: str, otp_code: str, user_name: Optional[str] = None
-) -> bool:
+def send_otp_email(to_email: str, otp_code: str, user_name: Optional[str] = None) -> bool:
     """
     Send OTP code via email using Gmail SMTP.
 

@@ -200,7 +200,8 @@ def is_valid_email(email: str) -> Tuple[bool, str]:
         if tld not in VALID_TLDS:
             return (
                 False,
-                f"Email address must use a valid top-level domain (e.g., .com, .edu, .org). '{tld}' is not recognized as a valid domain.",
+                f"Email address must use a valid top-level domain (e.g., .com, .edu, .org)."
+                f" '{tld}' is not recognized as a valid domain.",
             )
 
         return True, ""

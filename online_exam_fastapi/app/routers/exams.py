@@ -31,9 +31,7 @@ STATUS_OPTIONS = ["draft", "scheduled", "completed"]
 EXAM_TITLE_MAX_LENGTH = 200
 EXAM_SUBJECT_MAX_LENGTH = 120
 EXAM_DURATION_MAX_MINUTES = 600
-EXAM_INSTRUCTIONS_MAX_LENGTH = (
-    2000  # 2,000 characters max for instructions (roughly 1-2 pages)
-)
+EXAM_INSTRUCTIONS_MAX_LENGTH = 2000  # 2,000 characters max for instructions (roughly 1-2 pages)
 ITEMS_PER_PAGE = 10  # Number of items per page for pagination
 
 
@@ -54,9 +52,7 @@ def _get_exam(exam_id: int, session: Session) -> Exam:
 def _has_mcq_result(session: Session, exam_id: int, student_id: int) -> bool:
     """Return True if the student has a graded MCQ result for this exam (i.e. one attempt already used)."""
     existing = session.exec(
-        select(MCQResult).where(
-            MCQResult.exam_id == exam_id, MCQResult.student_id == student_id
-        )
+        select(MCQResult).where(MCQResult.exam_id == exam_id, MCQResult.student_id == student_id)
     ).first()
     return existing is not None
 
@@ -87,22 +83,14 @@ def student_exam_results(
     total_questions = 0
 
     for result, exam, course in mcq_results:
-        percentage = (
-            (result.score / result.total_questions * 100)
-            if result.total_questions > 0
-            else 0
-        )
+        percentage = (result.score / result.total_questions * 100) if result.total_questions > 0 else 0
         total_score += result.score
         total_questions += result.total_questions
 
-        results_list.append(
-            {"result": result, "exam": exam, "course": course, "percentage": percentage}
-        )
+        results_list.append({"result": result, "exam": exam, "course": course, "percentage": percentage})
 
     # Calculate overall statistics
-    overall_percentage = (
-        (total_score / total_questions * 100) if total_questions > 0 else 0
-    )
+    overall_percentage = (total_score / total_questions * 100) if total_questions > 0 else 0
 
     context = {
         "request": request,
@@ -195,13 +183,9 @@ def join_exam(
         )
 
     # Get MCQ questions
-    mcq_questions = session.exec(
-        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
-    ).all()
+    mcq_questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
     # Get essay questions
-    essay_questions = session.exec(
-        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
-    ).all()
+    essay_questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
 
     # Get any existing MCQ answers
     mcq_answers = session.exec(
@@ -243,9 +227,7 @@ def join_exam(
 
 
 @router.post("/{exam_id}/submit-essay")
-async def submit_essay_attempt(
-    exam_id: int, request: Request, session: Session = Depends(get_session)
-):
+async def submit_essay_attempt(exam_id: int, request: Request, session: Session = Depends(get_session)):
     """Mark an essay attempt as submitted/final."""
     from app.models import ExamAttempt
 
@@ -271,9 +253,7 @@ async def submit_essay_attempt(
 
 
 @router.post("/{exam_id}/log-activity")
-async def log_exam_activity(
-    exam_id: int, request: Request, session: Session = Depends(get_session)
-):
+async def log_exam_activity(exam_id: int, request: Request, session: Session = Depends(get_session)):
     """Log suspicious activities during exam taking for anti-cheating purposes."""
     data = await request.json()
     student_id = data.get("student_id")
@@ -325,9 +305,7 @@ async def log_exam_activity(
 
 
 @router.post("/{exam_id}/autosave")
-async def autosave_answers(
-    exam_id: int, request: Request, session: Session = Depends(get_session)
-):
+async def autosave_answers(exam_id: int, request: Request, session: Session = Depends(get_session)):
     from app.models import ExamAttempt, EssayAnswer
 
     data = await request.json()
@@ -407,18 +385,14 @@ async def autosave_answers(
 
 
 @router.post("/{exam_id}/submit")
-async def submit_exam(
-    exam_id: int, request: Request, session: Session = Depends(get_session)
-):
+async def submit_exam(exam_id: int, request: Request, session: Session = Depends(get_session)):
     data = await request.json()
     student_id = data.get("student_id")
     answers = data.get("answers", {})
 
     # Prevent multiple submissions: if a graded result already exists, return it unchanged.
     existing_result = session.exec(
-        select(MCQResult).where(
-            MCQResult.exam_id == exam_id, MCQResult.student_id == student_id
-        )
+        select(MCQResult).where(MCQResult.exam_id == exam_id, MCQResult.student_id == student_id)
     ).first()
     if existing_result is not None:
         return {
@@ -451,9 +425,7 @@ async def submit_exam(
             )
     session.commit()
     # Auto-grade
-    questions = session.exec(
-        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
-    ).all()
+    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
     correct = 0
     for q in questions:
         ans = session.exec(
@@ -489,9 +461,7 @@ def list_mcqs(
     current_user: User = Depends(require_role(["lecturer", "admin"])),
 ):
     exam = session.get(Exam, exam_id)
-    questions = session.exec(
-        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
-    ).all()
+    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
     context = {
         "request": request,
         "exam": exam,
@@ -585,9 +555,7 @@ def create_mcq(
             "errors": errors,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     mcq = MCQQuestion(
         exam_id=exam_id,
@@ -650,9 +618,7 @@ def update_mcq(
     mcq.correct_option = correct_option.strip()
     session.add(mcq)
     session.commit()
-    return RedirectResponse(
-        url=f"/exams/{mcq.exam_id}/mcq", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{mcq.exam_id}/mcq", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/mcq/{question_id}/delete")
@@ -666,9 +632,7 @@ def delete_mcq(
     if mcq:
         session.delete(mcq)
         session.commit()
-    return RedirectResponse(
-        url=f"/exams/{exam_id}/mcq", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam_id}/mcq", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/new")
@@ -724,15 +688,11 @@ async def create_exam(
     if not subject_clean:
         errors["subject"] = "Exam subject is required."
     elif len(subject_clean) > EXAM_SUBJECT_MAX_LENGTH:
-        errors["subject"] = (
-            f"Subject must be at most {EXAM_SUBJECT_MAX_LENGTH} characters."
-        )
+        errors["subject"] = f"Subject must be at most {EXAM_SUBJECT_MAX_LENGTH} characters."
 
     # Instructions validation (optional field, but has max length if provided)
     if instructions_clean and len(instructions_clean) > EXAM_INSTRUCTIONS_MAX_LENGTH:
-        errors["instructions"] = (
-            f"Instructions must be at most {EXAM_INSTRUCTIONS_MAX_LENGTH} characters."
-        )
+        errors["instructions"] = f"Instructions must be at most {EXAM_INSTRUCTIONS_MAX_LENGTH} characters."
 
     # Duration validation
     if not duration_minutes or not duration_minutes.strip():
@@ -744,9 +704,7 @@ async def create_exam(
             if duration_value <= 0:
                 errors["duration_minutes"] = "Duration must be greater than zero."
             elif duration_value > EXAM_DURATION_MAX_MINUTES:
-                errors["duration_minutes"] = (
-                    f"Duration cannot exceed {EXAM_DURATION_MAX_MINUTES} minutes."
-                )
+                errors["duration_minutes"] = f"Duration cannot exceed {EXAM_DURATION_MAX_MINUTES} minutes."
         except (TypeError, ValueError):
             errors["duration_minutes"] = "Duration must be a valid number of minutes."
             duration_value = 0
@@ -850,9 +808,7 @@ async def create_exam(
             "status_options": STATUS_OPTIONS,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     exam = Exam(
         title=title_clean,
@@ -869,9 +825,7 @@ async def create_exam(
     session.add(exam)
     session.commit()
     session.refresh(exam)
-    return RedirectResponse(
-        url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/course/{course_id}")
@@ -906,17 +860,13 @@ def exams_for_course(
 
     # Pagination
     total_exams = len(exams_sorted)
-    total_pages = (
-        (total_exams + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_exams > 0 else 1
-    )
+    total_pages = (total_exams + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_exams > 0 else 1
     page = min(page, total_pages) if total_pages > 0 else 1
     start_idx = (page - 1) * ITEMS_PER_PAGE
     end_idx = start_idx + ITEMS_PER_PAGE
     exams_paginated = exams_sorted[start_idx:end_idx]
 
-    has_sort = (sort not in (None, "", "start")) or (
-        (direction or "asc").lower() != "asc"
-    )
+    has_sort = (sort not in (None, "", "start")) or ((direction or "asc").lower() != "asc")
 
     context = {
         "request": request,
@@ -966,27 +916,19 @@ def lecturer_results_overview(
             select(CourseLecturer).where(CourseLecturer.lecturer_id == current_user.id)
         ).all()
         course_ids = [link.course_id for link in course_lecturer_links]
-        courses = (
-            session.exec(select(Course).where(Course.id.in_(course_ids))).all()
-            if course_ids
-            else []
-        )
+        courses = session.exec(select(Course).where(Course.id.in_(course_ids))).all() if course_ids else []
 
     # Get exam statistics for each course
     course_stats = []
     for course in courses:
         exams = session.exec(select(Exam).where(Exam.course_id == course.id)).all()
         total_exams = len(exams)
-        total_students = session.exec(
-            select(Enrollment).where(Enrollment.course_id == course.id)
-        ).all()
+        total_students = session.exec(select(Enrollment).where(Enrollment.course_id == course.id)).all()
 
         # Count completed exams (exams with results)
         completed_count = 0
         for exam in exams:
-            results_count = session.exec(
-                select(MCQResult).where(MCQResult.exam_id == exam.id)
-            ).all()
+            results_count = session.exec(select(MCQResult).where(MCQResult.exam_id == exam.id)).all()
             if len(results_count) > 0:
                 completed_count += 1
 
@@ -1025,17 +967,13 @@ def course_results(
     # Get result statistics for each exam
     exam_results = []
     for exam in exams:
-        results = session.exec(
-            select(MCQResult).where(MCQResult.exam_id == exam.id)
-        ).all()
+        results = session.exec(select(MCQResult).where(MCQResult.exam_id == exam.id)).all()
 
         if results:
             total_students = len(results)
             total_score = sum(r.score for r in results)
             total_questions = sum(r.total_questions for r in results)
-            avg_percentage = (
-                (total_score / total_questions * 100) if total_questions > 0 else 0
-            )
+            avg_percentage = (total_score / total_questions * 100) if total_questions > 0 else 0
             highest_score = max(r.score for r in results)
             lowest_score = min(r.score for r in results)
 
@@ -1095,28 +1033,18 @@ def exam_results_detail(
     # Format results
     student_results = []
     for result, student in results:
-        percentage = (
-            (result.score / result.total_questions * 100)
-            if result.total_questions > 0
-            else 0
-        )
-        student_results.append(
-            {"student": student, "result": result, "percentage": percentage}
-        )
+        percentage = (result.score / result.total_questions * 100) if result.total_questions > 0 else 0
+        student_results.append({"student": student, "result": result, "percentage": percentage})
 
     # Calculate statistics
     if results:
         scores = [r.score for r, _ in results]
         total_questions = results[0][0].total_questions if results else 0
         avg_score = sum(scores) / len(scores)
-        avg_percentage = (
-            (avg_score / total_questions * 100) if total_questions > 0 else 0
-        )
+        avg_percentage = (avg_score / total_questions * 100) if total_questions > 0 else 0
         highest_score = max(scores)
         lowest_score = min(scores)
-        pass_count = sum(
-            1 for r, _ in results if (r.score / r.total_questions * 100) >= 50
-        )
+        pass_count = sum(1 for r, _ in results if (r.score / r.total_questions * 100) >= 50)
         pass_rate = (pass_count / len(results) * 100) if results else 0
     else:
         avg_percentage = 0
@@ -1212,15 +1140,11 @@ async def update_exam(
     if not subject_clean:
         errors["subject"] = "Exam subject is required."
     elif len(subject_clean) > EXAM_SUBJECT_MAX_LENGTH:
-        errors["subject"] = (
-            f"Subject must be at most {EXAM_SUBJECT_MAX_LENGTH} characters."
-        )
+        errors["subject"] = f"Subject must be at most {EXAM_SUBJECT_MAX_LENGTH} characters."
 
     # Instructions validation (optional field, but has max length if provided)
     if instructions_clean and len(instructions_clean) > EXAM_INSTRUCTIONS_MAX_LENGTH:
-        errors["instructions"] = (
-            f"Instructions must be at most {EXAM_INSTRUCTIONS_MAX_LENGTH} characters."
-        )
+        errors["instructions"] = f"Instructions must be at most {EXAM_INSTRUCTIONS_MAX_LENGTH} characters."
 
     if not duration_minutes or not duration_minutes.strip():
         errors["duration_minutes"] = "Duration is required."
@@ -1231,9 +1155,7 @@ async def update_exam(
             if duration_value <= 0:
                 errors["duration_minutes"] = "Duration must be greater than zero."
             elif duration_value > EXAM_DURATION_MAX_MINUTES:
-                errors["duration_minutes"] = (
-                    f"Duration cannot exceed {EXAM_DURATION_MAX_MINUTES} minutes."
-                )
+                errors["duration_minutes"] = f"Duration cannot exceed {EXAM_DURATION_MAX_MINUTES} minutes."
         except (TypeError, ValueError):
             errors["duration_minutes"] = "Duration must be a valid number of minutes."
             duration_value = 0
@@ -1334,9 +1256,7 @@ async def update_exam(
             "status_options": STATUS_OPTIONS,
             "current_user": current_user,
         }
-        return templates.TemplateResponse(
-            "exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
-        )
+        return templates.TemplateResponse("exams/form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
 
     exam.title = title_clean
     exam.subject = subject_clean
@@ -1351,9 +1271,7 @@ async def update_exam(
     session.add(exam)
     session.commit()
 
-    return RedirectResponse(
-        url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER
-    )
+    return RedirectResponse(url=f"/exams/{exam.id}", status_code=http_status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{exam_id}/start")
@@ -1381,9 +1299,7 @@ def start_exam(
         # Check if exam has MCQ questions
         from app.models import MCQQuestion
 
-        mcq_count = session.exec(
-            select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
-        ).first()
+        mcq_count = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).first()
 
         # Redirect to appropriate exam type
         if mcq_count:
@@ -1394,9 +1310,7 @@ def start_exam(
             )
         else:
             # Essay exam
-            return RedirectResponse(
-                url=f"/essay/{exam_id}/start?student_id={student_id}", status_code=303
-            )
+            return RedirectResponse(url=f"/essay/{exam_id}/start?student_id={student_id}", status_code=303)
 
     except HTTPException:
         raise
@@ -1424,9 +1338,7 @@ def view_exam_schedule(
             raise HTTPException(status_code=404, detail="Student not found")
 
         # Get student's enrolled courses
-        enrollments = session.exec(
-            select(Enrollment).where(Enrollment.student_id == student_id)
-        ).all()
+        enrollments = session.exec(select(Enrollment).where(Enrollment.student_id == student_id)).all()
 
         course_ids = [enrollment.course_id for enrollment in enrollments]
 
@@ -1474,9 +1386,7 @@ def student_exam_schedule(
             raise HTTPException(status_code=404, detail="Student not found")
 
         # Get enrolled courses
-        enrollments = session.exec(
-            select(Enrollment).where(Enrollment.student_id == student_id)
-        ).all()
+        enrollments = session.exec(select(Enrollment).where(Enrollment.student_id == student_id)).all()
 
         course_ids = [e.course_id for e in enrollments]
 
@@ -1505,6 +1415,4 @@ def student_exam_schedule(
         import traceback
 
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail=f"Error loading exam schedule: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error loading exam schedule: {str(e)}")
