@@ -46,6 +46,76 @@ def list_questions(session: Session, exam_id: int) -> List[ExamQuestion]:
     return session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
 
 
+def get_question(session: Session, question_id: int) -> Optional[ExamQuestion]:
+    """Retrieve a single essay question by ID."""
+    return session.get(ExamQuestion, question_id)
+
+
+def edit_question(
+    session: Session, question_id: int, question_text: Optional[str] = None, max_marks: Optional[int] = None
+) -> ExamQuestion:
+    """Edit an existing essay question.
+
+    Args:
+        session: Database session
+        question_id: ID of the question to edit
+        question_text: New question text (optional)
+        max_marks: New max marks (optional)
+
+    Returns:
+        Updated ExamQuestion
+
+    Raises:
+        ValueError: If question doesn't exist or validation fails
+    """
+    question = session.get(ExamQuestion, question_id)
+    if not question:
+        raise ValueError(f"Question with id={question_id} does not exist")
+
+    if question_text is not None:
+        sanitized_text = sanitize_question_text(question_text)
+        if not sanitized_text:
+            raise ValueError("Question text cannot be empty after sanitization")
+        question.question_text = sanitized_text
+
+    if max_marks is not None:
+        if max_marks < 1:
+            raise ValueError("max_marks must be at least 1")
+        if max_marks > 1000:
+            raise ValueError("max_marks cannot exceed 1000")
+        question.max_marks = max_marks
+
+    session.add(question)
+    session.commit()
+    session.refresh(question)
+    return question
+
+
+def delete_question(session: Session, question_id: int) -> None:
+    """Delete an essay question and its associated answers.
+
+    Args:
+        session: Database session
+        question_id: ID of the question to delete
+
+    Raises:
+        ValueError: If question doesn't exist
+    """
+    question = session.get(ExamQuestion, question_id)
+    if not question:
+        raise ValueError(f"Question with id={question_id} does not exist")
+
+    # Delete all associated answers first (cascade)
+    stmt = select(EssayAnswer).where(EssayAnswer.question_id == question_id)
+    answers = session.exec(stmt).all()
+    for answer in answers:
+        session.delete(answer)
+
+    # Delete the question
+    session.delete(question)
+    session.commit()
+
+
 def _find_in_progress_attempt(session: Session, exam_id: int, student_id: int) -> Optional[ExamAttempt]:
     stmt = select(ExamAttempt).where(
         (ExamAttempt.exam_id == exam_id)
@@ -143,6 +213,49 @@ def timeout_attempt(
     session.commit()
     session.refresh(attempt)
     return attempt
+
+
+def edit_answer(
+    session: Session, attempt_id: int, question_id: int, answer_text: Optional[str] = None
+) -> EssayAnswer:
+    """Edit an existing essay answer during an in-progress attempt.
+
+    Args:
+        session: Database session
+        attempt_id: ID of the attempt
+        question_id: ID of the question
+        answer_text: New answer text (optional)
+
+    Returns:
+        Updated EssayAnswer
+
+    Raises:
+        ValueError: If answer doesn't exist, attempt is final, or validation fails
+    """
+    # Check that attempt exists and is in_progress
+    attempt = session.get(ExamAttempt, attempt_id)
+    if not attempt:
+        raise ValueError(f"Attempt with id={attempt_id} does not exist")
+
+    if attempt.status != "in_progress":
+        raise ValueError(f"Cannot edit answers for attempt with status '{attempt.status}'. Only 'in_progress' attempts can be edited.")
+
+    # Find the answer
+    stmt = select(EssayAnswer).where(
+        (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == question_id)
+    )
+    answer = session.exec(stmt).first()
+
+    if not answer:
+        raise ValueError(f"Answer for question {question_id} in attempt {attempt_id} does not exist")
+
+    if answer_text is not None:
+        answer.answer_text = answer_text
+
+    session.add(answer)
+    session.commit()
+    session.refresh(answer)
+    return answer
 
 
 def grade_attempt(

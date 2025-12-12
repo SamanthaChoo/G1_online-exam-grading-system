@@ -90,9 +90,18 @@ def test_attempt_duration_default_and_timeout():
 
     # Call the async endpoint function directly; pass the session explicitly
     with Session(engine) as session:
-        # run the coroutine
+        # run the coroutine with a new event loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
         coro = attempt_timeout(exam.id, attempt.id, session, DummyReq(payload))
-        res = asyncio.get_event_loop().run_until_complete(coro)
+        res = loop.run_until_complete(coro)
 
     # Verify attempt updated in DB
     with Session(engine) as session:

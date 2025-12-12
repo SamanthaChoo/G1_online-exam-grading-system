@@ -10,6 +10,7 @@ from app.models import (
 )
 from app.services.essay_service import (
     add_question,
+    delete_question,
     edit_question,
     get_question,
     grade_attempt,
@@ -171,6 +172,24 @@ def update_question(
 ):
     try:
         edit_question(session, question_id, question_text, max_marks)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
+
+
+@router.post("/essay/{exam_id}/questions/{question_id}/delete")
+def delete_question_ui(
+    exam_id: int,
+    question_id: int,
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(get_current_user),
+):
+    # Students should not be able to delete questions
+    if current_user and current_user.role == "student":
+        raise HTTPException(status_code=403, detail="Students are not allowed to delete questions.")
+    
+    try:
+        delete_question(session, question_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse(url=f"/essay/{exam_id}/questions", status_code=303)
