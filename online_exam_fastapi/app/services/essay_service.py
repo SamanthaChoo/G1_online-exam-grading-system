@@ -244,9 +244,7 @@ def edit_answer(
         )
 
     # Find the answer
-    stmt = select(EssayAnswer).where(
-        (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == question_id)
-    )
+    stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == question_id))
     answer = session.exec(stmt).first()
 
     if not answer:
