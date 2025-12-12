@@ -60,7 +60,9 @@ def _validate_mcq_inputs(
     if not question_clean:
         errors["question_text"] = "Question text is required."
     elif len(question_clean) > MCQ_QUESTION_MAX_LENGTH:
-        errors["question_text"] = f"Question text must be at most {MCQ_QUESTION_MAX_LENGTH} characters."
+        errors["question_text"] = (
+            f"Question text must be at most {MCQ_QUESTION_MAX_LENGTH} characters."
+        )
 
     # Validate all options are provided and non-empty
     if not opt_a_clean:
@@ -74,13 +76,21 @@ def _validate_mcq_inputs(
 
     # Validate option lengths (only if not empty, to avoid duplicate error messages)
     if opt_a_clean and len(opt_a_clean) > MCQ_OPTION_MAX_LENGTH:
-        errors["option_a"] = f"Option A must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        errors["option_a"] = (
+            f"Option A must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        )
     if opt_b_clean and len(opt_b_clean) > MCQ_OPTION_MAX_LENGTH:
-        errors["option_b"] = f"Option B must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        errors["option_b"] = (
+            f"Option B must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        )
     if opt_c_clean and len(opt_c_clean) > MCQ_OPTION_MAX_LENGTH:
-        errors["option_c"] = f"Option C must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        errors["option_c"] = (
+            f"Option C must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        )
     if opt_d_clean and len(opt_d_clean) > MCQ_OPTION_MAX_LENGTH:
-        errors["option_d"] = f"Option D must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        errors["option_d"] = (
+            f"Option D must be at most {MCQ_OPTION_MAX_LENGTH} characters."
+        )
 
     # Check for duplicate options (case-insensitive)
     if not errors:  # Only check duplicates if basic validation passed
@@ -133,7 +143,9 @@ def view_mcq_questions(
 ):
     """View all MCQ questions for an exam."""
     exam = _get_exam(exam_id, session)
-    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
+    questions = session.exec(
+        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
+    ).all()
 
     context = {
         "request": request,
@@ -203,7 +215,9 @@ async def create_mcq(
             },
             "current_user": current_user,
         }
-        return templates.TemplateResponse("exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
+        return templates.TemplateResponse(
+            "exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
+        )
 
     # Clean inputs for storage
     question_clean = (question_text or "").strip()
@@ -243,7 +257,9 @@ def list_mcqs(
 ):
     """List all MCQ questions for an exam."""
     exam = _get_exam(exam_id, session)
-    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
+    questions = session.exec(
+        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
+    ).all()
 
     context = {
         "request": request,
@@ -324,7 +340,9 @@ async def update_mcq(
             },
             "current_user": current_user,
         }
-        return templates.TemplateResponse("exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST)
+        return templates.TemplateResponse(
+            "exams/mcq_form.html", context, status_code=http_status.HTTP_400_BAD_REQUEST
+        )
 
     # Clean inputs for storage
     question_clean = (question_text or "").strip()
@@ -410,7 +428,9 @@ def start_mcq_submit(
     # Resolve the Student.id linked to this user
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
@@ -428,7 +448,9 @@ def start_mcq_submit(
             )
         ).first()
         if enrollment is None:
-            raise HTTPException(status_code=403, detail="You are not enrolled in this course")
+            raise HTTPException(
+                status_code=403, detail="You are not enrolled in this course"
+            )
 
     # Check if student already has answers for this exam
     existing_answer = session.exec(
@@ -438,7 +460,9 @@ def start_mcq_submit(
         )
     ).first()
     if existing_answer:
-        raise HTTPException(status_code=403, detail="You have already answered this exam")
+        raise HTTPException(
+            status_code=403, detail="You have already answered this exam"
+        )
 
     # Redirect to attempt page
     return RedirectResponse(
@@ -461,7 +485,9 @@ def mcq_attempt(
     exam = _get_exam(exam_id, session)
 
     # Get all MCQ questions for this exam
-    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
+    questions = session.exec(
+        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
+    ).all()
 
     if not questions:
         raise HTTPException(status_code=400, detail="No questions in this exam")
@@ -469,7 +495,9 @@ def mcq_attempt(
     # Get student record
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
@@ -513,7 +541,9 @@ async def submit_mcq_attempt(
     # Get student ID
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 
@@ -561,7 +591,9 @@ async def submit_mcq_attempt(
             session.add(answer)
 
     # Get all questions to auto-grade
-    questions = session.exec(select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)).all()
+    questions = session.exec(
+        select(MCQQuestion).where(MCQQuestion.exam_id == exam_id)
+    ).all()
 
     # Calculate score by comparing answers with correct options
     score = 0
@@ -616,7 +648,9 @@ def mcq_result(
     # Get student ID
     student_id = current_user.student_id
     if student_id is None:
-        s = session.exec(select(Student).where(Student.user_id == current_user.id)).first()
+        s = session.exec(
+            select(Student).where(Student.user_id == current_user.id)
+        ).first()
         if s:
             student_id = s.id
 

@@ -68,7 +68,9 @@ class Exam(SQLModel, table=True):
 
 
 class Enrollment(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("course_id", "student_id", name="uq_course_student"),)
+    __table_args__ = (
+        UniqueConstraint("course_id", "student_id", name="uq_course_student"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     course_id: int = Field(foreign_key="course.id")
@@ -114,7 +116,9 @@ class EssayAnswer(SQLModel, table=True):
 class CourseLecturer(SQLModel, table=True):
     """Junction table for many-to-many relationship between Course and Lecturer (User with role='lecturer')."""
 
-    __table_args__ = (UniqueConstraint("course_id", "lecturer_id", name="uq_course_lecturer"),)
+    __table_args__ = (
+        UniqueConstraint("course_id", "lecturer_id", name="uq_course_lecturer"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     course_id: int = Field(foreign_key="course.id")
@@ -209,9 +213,7 @@ class ExamActivityLog(SQLModel, table=True):
     attempt_id: Optional[int] = Field(default=None, foreign_key="examattempt.id")
     exam_id: int = Field(foreign_key="exam.id")
     student_id: int = Field(foreign_key="student.id")
-    activity_type: (
-        str  # e.g., "tab_switch", "right_click", "copy_attempt", "paste_attempt", "devtools_attempt", "fullscreen_exit"
-    )
+    activity_type: str  # e.g., "tab_switch", "right_click", "copy_attempt", "paste_attempt", "devtools_attempt", "fullscreen_exit"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     activity_metadata: Optional[str] = Field(
         default=None

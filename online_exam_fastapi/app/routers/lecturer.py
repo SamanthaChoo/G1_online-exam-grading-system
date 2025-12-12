@@ -40,7 +40,9 @@ def view_results_by_course(
         ).all()
         course_ids = [lc.course_id for lc in lecturer_courses]
         if course_ids:
-            courses = session.exec(select(Course).where(Course.id.in_(course_ids)).order_by(Course.name)).all()
+            courses = session.exec(
+                select(Course).where(Course.id.in_(course_ids)).order_by(Course.name)
+            ).all()
         else:
             courses = []
 
@@ -56,21 +58,28 @@ def view_results_by_course(
         if current_user.role != "admin":
             lecturer_course = session.exec(
                 select(CourseLecturer).where(
-                    (CourseLecturer.lecturer_id == current_user.id) & (CourseLecturer.course_id == course_id)
+                    (CourseLecturer.lecturer_id == current_user.id)
+                    & (CourseLecturer.course_id == course_id)
                 )
             ).first()
             if not lecturer_course:
-                raise HTTPException(status_code=403, detail="You don't have access to this course")
+                raise HTTPException(
+                    status_code=403, detail="You don't have access to this course"
+                )
 
         # Get all exams for this course
-        exams = session.exec(select(Exam).where(Exam.course_id == course_id).order_by(Exam.title)).all()
+        exams = session.exec(
+            select(Exam).where(Exam.course_id == course_id).order_by(Exam.title)
+        ).all()
 
         # Group results by exam
         for exam in exams:
             exam_data = {"exam": exam, "students": []}
 
             # Get all attempts for this exam
-            attempts = session.exec(select(ExamAttempt).where(ExamAttempt.exam_id == exam.id)).all()
+            attempts = session.exec(
+                select(ExamAttempt).where(ExamAttempt.exam_id == exam.id)
+            ).all()
 
             for attempt in attempts:
                 student = session.get(Student, attempt.student_id)
@@ -80,15 +89,22 @@ def view_results_by_course(
                 # Get MCQ results if any
                 mcq_result = session.exec(
                     select(MCQResult).where(
-                        (MCQResult.student_id == attempt.student_id) & (MCQResult.exam_id == exam.id)
+                        (MCQResult.student_id == attempt.student_id)
+                        & (MCQResult.exam_id == exam.id)
                     )
                 ).first()
 
                 # Get essay answers if any
-                essay_answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)).all()
+                essay_answers = session.exec(
+                    select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)
+                ).all()
 
                 # Calculate essay total
-                essay_total = sum((ans.marks_awarded or 0) for ans in essay_answers) if essay_answers else None
+                essay_total = (
+                    sum((ans.marks_awarded or 0) for ans in essay_answers)
+                    if essay_answers
+                    else None
+                )
 
                 student_result = {
                     "student": student,

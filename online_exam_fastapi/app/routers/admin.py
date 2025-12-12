@@ -45,7 +45,9 @@ def list_users(
         "users": users_sorted,
         "sort": sort,
         "direction": "desc" if is_desc else "asc",
-        "has_sort": (sort not in (None, "", "created") or (direction or "desc").lower() != "desc"),
+        "has_sort": (
+            sort not in (None, "", "created") or (direction or "desc").lower() != "desc"
+        ),
         "current_user": current_user,
     }
     return templates.TemplateResponse("admin/user_list.html", context)
@@ -111,7 +113,7 @@ def edit_user(
 
     if not name_clean:
         errors["name"] = "Name is required."
-    
+
     # Email validation with TLD checking
     if not email_clean:
         errors["email"] = "Email is required."
@@ -119,7 +121,7 @@ def edit_user(
         email_error = validate_email_format(email_clean)
         if email_error:
             errors["email"] = email_error
-    
+
     if role_clean not in ("admin", "lecturer", "student"):
         errors["role"] = "Role must be admin, lecturer, or student."
 
@@ -144,13 +146,17 @@ def edit_user(
             errors["phone"] = "Please enter a valid phone number (7-15 digits)."
 
     # Check for duplicate email on other users
-    existing = session.exec(select(User).where(User.email == email_clean, User.id != user_id)).first()
+    existing = session.exec(
+        select(User).where(User.email == email_clean, User.id != user_id)
+    ).first()
     if existing:
         errors["email"] = "Another user already uses this email."
 
     # Check for duplicate staff_id on other users (if provided and role is lecturer)
     if staff_id_clean and role_clean == "lecturer":
-        existing_staff = session.exec(select(User).where(User.staff_id == staff_id_clean, User.id != user_id)).first()
+        existing_staff = session.exec(
+            select(User).where(User.staff_id == staff_id_clean, User.id != user_id)
+        ).first()
         if existing_staff:
             errors["staff_id"] = "This Staff ID is already in use by another user."
 
@@ -172,7 +178,9 @@ def edit_user(
             "errors": errors,
             "current_user": current_user,
         }
-        return templates.TemplateResponse("admin/user_form.html", context, status_code=status.HTTP_400_BAD_REQUEST)
+        return templates.TemplateResponse(
+            "admin/user_form.html", context, status_code=status.HTTP_400_BAD_REQUEST
+        )
 
     user.name = name_clean
     user.email = email_clean
@@ -187,7 +195,9 @@ def edit_user(
     if hasattr(user, "phone"):
         user.phone = phone_clean
     if hasattr(user, "status"):
-        user.status = status_field if status_field in ["active", "suspended"] else "active"
+        user.status = (
+            status_field if status_field in ["active", "suspended"] else "active"
+        )
 
     session.add(user)
     session.commit()
@@ -278,7 +288,9 @@ def create_lecturer(
 
     # Check for duplicate staff_id
     if staff_id_clean:
-        existing_staff = session.exec(select(User).where(User.staff_id == staff_id_clean)).first()
+        existing_staff = session.exec(
+            select(User).where(User.staff_id == staff_id_clean)
+        ).first()
         if existing_staff:
             errors["staff_id"] = "This Staff ID is already in use."
 
@@ -295,7 +307,9 @@ def create_lecturer(
             "errors": errors,
             "current_user": current_user,
         }
-        return templates.TemplateResponse("admin/lecturer_form.html", context, status_code=status.HTTP_400_BAD_REQUEST)
+        return templates.TemplateResponse(
+            "admin/lecturer_form.html", context, status_code=status.HTTP_400_BAD_REQUEST
+        )
 
     # Create lecturer user
     lecturer = User(
@@ -328,7 +342,9 @@ def reactivate_admin(
             admin.status = "active"
         session.add(admin)
         session.commit()
-        return {"message": "Admin account reactivated successfully. You can now log in."}
+        return {
+            "message": "Admin account reactivated successfully. You can now log in."
+        }
     return {"message": "Admin account not found."}
 
 
@@ -362,7 +378,11 @@ def performance_summary_report(
                 continue
 
             subject = exam.subject
-            percentage = (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
+            percentage = (
+                (mcq_result.score / mcq_result.total_questions * 100)
+                if mcq_result.total_questions > 0
+                else 0
+            )
             is_passed = percentage >= 60  # Pass threshold: 60%
 
             if subject not in subject_data:
@@ -385,7 +405,9 @@ def performance_summary_report(
 
         # Collect Essay results
         essay_attempts = session.exec(
-            select(ExamAttempt).where(ExamAttempt.status.in_(["submitted", "timed_out"]))
+            select(ExamAttempt).where(
+                ExamAttempt.status.in_(["submitted", "timed_out"])
+            )
         ).all()
 
         for attempt in essay_attempts:
@@ -394,7 +416,9 @@ def performance_summary_report(
                 continue
 
             # Check if graded
-            answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)).all()
+            answers = session.exec(
+                select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)
+            ).all()
 
             is_graded = any(a.marks_awarded is not None for a in answers)
             if not is_graded:
@@ -403,10 +427,14 @@ def performance_summary_report(
             total_marks = sum((a.marks_awarded or 0) for a in answers)
 
             # Get total possible marks
-            questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)).all()
+            questions = session.exec(
+                select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)
+            ).all()
             total_possible = sum((q.max_marks or 0) for q in questions)
 
-            percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
+            percentage = (
+                (total_marks / total_possible * 100) if total_possible > 0 else 0
+            )
             is_passed = percentage >= 60
 
             subject = exam.subject
@@ -470,4 +498,6 @@ def performance_summary_report(
         import traceback
 
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating report: {str(e)}"
+        )

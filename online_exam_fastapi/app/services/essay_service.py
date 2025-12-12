@@ -18,7 +18,9 @@ def get_exam(session: Session, exam_id: int) -> Optional[Exam]:
     return session.get(Exam, exam_id)
 
 
-def add_question(session: Session, exam_id: int, question_text: str, max_marks: int) -> ExamQuestion:
+def add_question(
+    session: Session, exam_id: int, question_text: str, max_marks: int
+) -> ExamQuestion:
     # Ensure the target exam exists before adding the question
     exam = session.get(Exam, exam_id)
     if not exam:
@@ -43,7 +45,9 @@ def add_question(session: Session, exam_id: int, question_text: str, max_marks: 
 
 
 def list_questions(session: Session, exam_id: int) -> List[ExamQuestion]:
-    return session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)).all()
+    return session.exec(
+        select(ExamQuestion).where(ExamQuestion.exam_id == exam_id)
+    ).all()
 
 
 def get_question(session: Session, question_id: int) -> Optional[ExamQuestion]:
@@ -52,7 +56,10 @@ def get_question(session: Session, question_id: int) -> Optional[ExamQuestion]:
 
 
 def edit_question(
-    session: Session, question_id: int, question_text: Optional[str] = None, max_marks: Optional[int] = None
+    session: Session,
+    question_id: int,
+    question_text: Optional[str] = None,
+    max_marks: Optional[int] = None,
 ) -> ExamQuestion:
     """Edit an existing essay question.
 
@@ -110,7 +117,9 @@ def delete_question(session: Session, question_id: int) -> None:
     session.commit()
 
 
-def _find_in_progress_attempt(session: Session, exam_id: int, student_id: int) -> Optional[ExamAttempt]:
+def _find_in_progress_attempt(
+    session: Session, exam_id: int, student_id: int
+) -> Optional[ExamAttempt]:
     stmt = select(ExamAttempt).where(
         (ExamAttempt.exam_id == exam_id)
         & (ExamAttempt.student_id == student_id)
@@ -127,7 +136,9 @@ def start_attempt(session: Session, exam_id: int, student_id: int) -> ExamAttemp
 
     # If there's already a final attempt (submitted/timed_out), do not create a new one.
     stmt_final = select(ExamAttempt).where(
-        (ExamAttempt.exam_id == exam_id) & (ExamAttempt.student_id == student_id) & (ExamAttempt.is_final == 1)
+        (ExamAttempt.exam_id == exam_id)
+        & (ExamAttempt.student_id == student_id)
+        & (ExamAttempt.is_final == 1)
     )
     final_attempt = session.exec(stmt_final).first()
     if final_attempt:
@@ -148,7 +159,9 @@ def start_attempt(session: Session, exam_id: int, student_id: int) -> ExamAttemp
     return attempt
 
 
-def submit_answers(session: Session, exam_id: int, student_id: int, answers: List[dict]) -> ExamAttempt:
+def submit_answers(
+    session: Session, exam_id: int, student_id: int, answers: List[dict]
+) -> ExamAttempt:
     # find or create attempt
     attempt = _find_in_progress_attempt(session, exam_id, student_id)
     if not attempt:
@@ -158,7 +171,9 @@ def submit_answers(session: Session, exam_id: int, student_id: int, answers: Lis
     for a in answers:
         qid = a.get("question_id")
         text = a.get("answer_text")
-        stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid))
+        stmt = select(EssayAnswer).where(
+            (EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid)
+        )
         existing = session.exec(stmt).first()
         if existing:
             existing.answer_text = text
@@ -191,13 +206,18 @@ def timeout_attempt(
         for a in answers:
             qid = a.get("question_id")
             text = a.get("answer_text")
-            stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt.id) & (EssayAnswer.question_id == qid))
+            stmt = select(EssayAnswer).where(
+                (EssayAnswer.attempt_id == attempt.id)
+                & (EssayAnswer.question_id == qid)
+            )
             existing = session.exec(stmt).first()
             if existing:
                 existing.answer_text = text
                 session.add(existing)
             else:
-                new = EssayAnswer(attempt_id=attempt.id, question_id=qid, answer_text=text)
+                new = EssayAnswer(
+                    attempt_id=attempt.id, question_id=qid, answer_text=text
+                )
                 session.add(new)
 
     attempt.status = "timed_out"
@@ -210,7 +230,10 @@ def timeout_attempt(
 
 
 def edit_answer(
-    session: Session, attempt_id: int, question_id: int, answer_text: Optional[str] = None
+    session: Session,
+    attempt_id: int,
+    question_id: int,
+    answer_text: Optional[str] = None,
 ) -> EssayAnswer:
     """Edit an existing essay answer during an in-progress attempt.
 
@@ -232,16 +255,21 @@ def edit_answer(
         raise ValueError(f"Attempt with id={attempt_id} does not exist")
 
     if attempt.status != "in_progress":
-        raise ValueError(f"Cannot edit answers for attempt with status '{attempt.status}'. Only 'in_progress' attempts can be edited.")
+        raise ValueError(
+            f"Cannot edit answers for attempt with status '{attempt.status}'. Only 'in_progress' attempts can be edited."
+        )
 
     # Find the answer
     stmt = select(EssayAnswer).where(
-        (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == question_id)
+        (EssayAnswer.attempt_id == attempt_id)
+        & (EssayAnswer.question_id == question_id)
     )
     answer = session.exec(stmt).first()
 
     if not answer:
-        raise ValueError(f"Answer for question {question_id} in attempt {attempt_id} does not exist")
+        raise ValueError(
+            f"Answer for question {question_id} in attempt {attempt_id} does not exist"
+        )
 
     if answer_text is not None:
         answer.answer_text = answer_text
@@ -298,7 +326,9 @@ def grade_attempt(
         except ValueError as e:
             raise ValueError(f"Question {qid}: {str(e)}")
 
-        stmt = select(EssayAnswer).where((EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == qid))
+        stmt = select(EssayAnswer).where(
+            (EssayAnswer.attempt_id == attempt_id) & (EssayAnswer.question_id == qid)
+        )
         ans = session.exec(stmt).first()
         if ans:
             ans.marks_awarded = marks
