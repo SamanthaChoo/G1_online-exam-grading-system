@@ -16,6 +16,9 @@ from app.models import (
     MCQAnswer,
     CourseLecturer,
     ExamActivityLog,
+    ExamAttempt,
+    EssayAnswer,
+    ExamQuestion,
 )
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi import status as http_status
@@ -63,7 +66,7 @@ def student_exam_results(
     session: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user),
 ):
-    """View exam results for a specific student."""
+    """View exam results for a specific student - includes both MCQ and Essay results."""
     student = session.get(Student, student_id)
 
     # Get all MCQ results for this student
@@ -75,19 +78,76 @@ def student_exam_results(
         .order_by(MCQResult.graded_at.desc())
     ).all()
 
-    # Format results with additional info
+    # Get all Essay results for this student (graded attempts only)
+    essay_attempts = session.exec(
+        select(ExamAttempt, Exam, Course)
+        .join(Exam, ExamAttempt.exam_id == Exam.id)
+        .join(Course, Exam.course_id == Course.id)
+        .where(
+            (ExamAttempt.student_id == student_id) &
+            (ExamAttempt.status.in_(["submitted", "timed_out"]))
+        )
+        .order_by(ExamAttempt.submitted_at.desc())
+    ).all()
+
+    # Combine results
     results_list = []
-    total_exams = len(mcq_results)
     total_score = 0
     total_questions = 0
 
+    # Process MCQ results
     for result, exam, course in mcq_results:
         percentage = (result.score / result.total_questions * 100) if result.total_questions > 0 else 0
         total_score += result.score
         total_questions += result.total_questions
 
-        results_list.append({"result": result, "exam": exam, "course": course, "percentage": percentage})
+        results_list.append({
+            "type": "MCQ",
+            "result": result,
+            "exam": exam,
+            "course": course,
+            "percentage": percentage,
+            "graded_at": result.graded_at,
+        })
 
+    # Process Essay results
+    for attempt, exam, course in essay_attempts:
+        # Get answers for this attempt
+        answers = session.exec(select(EssayAnswer).where(EssayAnswer.attempt_id == attempt.id)).all()
+
+        # Check if graded (any answer has marks_awarded set)
+        is_graded = any(a.marks_awarded is not None for a in answers)
+        if not is_graded:
+            continue  # Skip ungraded essays
+
+        # Calculate total marks
+        total_marks = sum((a.marks_awarded or 0) for a in answers)
+
+        # Get total possible marks
+        questions = session.exec(select(ExamQuestion).where(ExamQuestion.exam_id == attempt.exam_id)).all()
+        total_possible = sum((q.max_marks or 0) for q in questions)
+
+        percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
+        total_score += total_marks
+        total_questions += total_possible
+
+        results_list.append({
+            "type": "Essay",
+            "result": type('obj', (object,), {
+                'score': total_marks,
+                'total_questions': total_possible,
+                'graded_at': attempt.submitted_at
+            })(),
+            "exam": exam,
+            "course": course,
+            "percentage": percentage,
+            "graded_at": attempt.submitted_at,
+        })
+
+    # Sort by graded_at descending
+    results_list.sort(key=lambda x: x["graded_at"] if x["graded_at"] else datetime.min, reverse=True)
+
+    total_exams = len(results_list)
     # Calculate overall statistics
     overall_percentage = (total_score / total_questions * 100) if total_questions > 0 else 0
 

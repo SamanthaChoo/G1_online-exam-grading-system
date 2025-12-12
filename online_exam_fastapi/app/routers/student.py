@@ -215,17 +215,16 @@ def view_grades(
                 continue
 
             percentage = (mcq_result.score / mcq_result.total_questions * 100) if mcq_result.total_questions > 0 else 0
-            grade = calculate_grade(percentage)
 
             results.append(
                 {
-                    "exam_title": exam.title,
+                    "exam": exam,
+                    "type": "MCQ",
                     "score": mcq_result.score,
-                    "total_score": mcq_result.total_questions,
-                    "grade": grade,
-                    "published_date": (
-                        mcq_result.graded_at.strftime("%Y-%m-%d %H:%M") if mcq_result.graded_at else "-"
-                    ),
+                    "total": mcq_result.total_questions,
+                    "percentage": percentage,
+                    "is_published": True,
+                    "submitted_at": mcq_result.graded_at.strftime("%Y-%m-%d %H:%M") if mcq_result.graded_at else None,
                 }
             )
 
@@ -256,26 +255,56 @@ def view_grades(
             total_possible = sum((q.max_marks or 0) for q in questions)
 
             percentage = (total_marks / total_possible * 100) if total_possible > 0 else 0
-            grade = calculate_grade(percentage)
 
             results.append(
                 {
-                    "exam_title": exam.title,
+                    "exam": exam,
+                    "type": "Essay",
                     "score": total_marks,
-                    "total_score": total_possible,
-                    "grade": grade,
-                    "published_date": (
-                        attempt.submitted_at.strftime("%Y-%m-%d %H:%M") if attempt.submitted_at else "-"
-                    ),
+                    "total": total_possible,
+                    "percentage": percentage,
+                    "is_published": True,
+                    "submitted_at": attempt.submitted_at.strftime("%Y-%m-%d %H:%M") if attempt.submitted_at else None,
                 }
             )
 
+        # Sort and paginate
+        sort = request.query_params.get("sort", "date")
+        direction = request.query_params.get("direction", "desc")
+        page = int(request.query_params.get("page", 1))
+        ITEMS_PER_PAGE = 10
+
+        if sort == "date":
+            results.sort(
+                key=lambda x: x.get("submitted_at") or "",
+                reverse=(direction == "desc"),
+            )
+        elif sort == "exam":
+            results.sort(key=lambda x: x["exam"].title.lower(), reverse=(direction == "desc"))
+        elif sort == "score":
+            results.sort(key=lambda x: x["percentage"], reverse=(direction == "desc"))
+
+        total_results = len(results)
+        total_pages = (total_results + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE if total_results > 0 else 1
+        page = min(page, total_pages) if total_pages > 0 else 1
+
+        start_idx = (page - 1) * ITEMS_PER_PAGE
+        end_idx = start_idx + ITEMS_PER_PAGE
+        paginated_results = results[start_idx:end_idx]
+
         context = {
             "request": request,
-            "results": results,
+            "student": student,
+            "results": paginated_results,
+            "sort": sort,
+            "direction": direction,
+            "page": page,
+            "current_page": page,
+            "total_pages": total_pages,
+            "total_results": total_results,
             "current_user": current_user,
         }
-        return templates.TemplateResponse("view_grades.html", context)
+        return templates.TemplateResponse("student/grades.html", context)
 
     except HTTPException:
         raise
