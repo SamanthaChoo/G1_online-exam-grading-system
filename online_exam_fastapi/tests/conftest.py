@@ -107,8 +107,14 @@ def client():
     app.dependency_overrides[get_session] = override_get_session
     
     # Create event loop for this test
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
     
     # Create AsyncClient
     transport = httpx.ASGITransport(app=app)
@@ -147,17 +153,7 @@ def client():
     
     # Cleanup
     loop.run_until_complete(async_client.aclose())
-    loop.close()
     app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def session():
-    """Create a database session for testing."""
-    with Session(test_engine) as session:
-        yield session
-
-
 # ============================================================================
 # ENTITY FIXTURES
 # ============================================================================

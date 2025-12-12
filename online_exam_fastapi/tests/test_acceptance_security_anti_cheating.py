@@ -33,16 +33,6 @@ _ensure_app_on_path()
 
 
 @pytest.fixture
-def client():
-    """Create a test client for the FastAPI application."""
-    from app.main import app
-    from app.database import create_db_and_tables
-    
-    create_db_and_tables()
-    return TestClient(app)
-
-
-@pytest.fixture
 def db_session():
     """Create a database session for testing."""
     from app.database import create_db_and_tables, engine
